@@ -5,13 +5,14 @@ import { useAuthStore } from '../store/authStore'
 import { useCVStore } from '../store/cvStore'
 import { useSubscriptionStore } from '../store/subscriptionStore'
 import { PLANS, FREE_PLAN_MAX_CVS } from '../constants/plans'
-import { Plus, FileText, Pencil, ScanSearch, Calendar, Lock, Crown, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Plus, FileText, Pencil, ScanSearch, Calendar, Lock, Crown, AlertTriangle, CheckCircle2, Shield } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
+import { ADMIN_SECRET_PATH } from '../constants/plans'
 
 export default function DashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, profile } = useAuthStore()
+  const { user, profile, isAdmin } = useAuthStore()
   const { cvs, loading, fetchCVs, createCV } = useCVStore()
   const { subscription, fetchSubscription, getPlan, canCreateCV } = useSubscriptionStore()
   const [creating, setCreating] = useState(false)
@@ -117,14 +118,25 @@ export default function DashboardPage() {
             {t('dashboard.welcome')}, {profile?.full_name || user?.email}
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          disabled={creating || limitReached}
-          className="btn-primary"
-          title={limitReached ? t('dashboard.limit_reached') : ''}
-        >
-          {creating ? <Spinner size={20} /> : <><Plus size={20} /> {t('dashboard.create_cv')}</>}
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => navigate(`/${ADMIN_SECRET_PATH}`)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+            >
+              <Shield size={18} />
+              لوحة التحكم
+            </button>
+          )}
+          <button
+            onClick={handleCreate}
+            disabled={creating || limitReached}
+            className="btn-primary"
+            title={limitReached ? t('dashboard.limit_reached') : ''}
+          >
+            {creating ? <Spinner size={20} /> : <><Plus size={20} /> {t('dashboard.create_cv')}</>}
+          </button>
+        </div>
       </div>
 
       {/* Limit reached message */}

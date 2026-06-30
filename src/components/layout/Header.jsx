@@ -2,13 +2,14 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useUIStore } from '../../store/uiStore'
-import { LogOut, Menu, X, Globe, FileText, LayoutDashboard, FlaskConical } from 'lucide-react'
+import { LogOut, Menu, X, Globe, FileText, LayoutDashboard, FlaskConical, Shield } from 'lucide-react'
 import { useState } from 'react'
 import { DEMO_MODE } from '../../lib/supabase'
+import { ADMIN_SECRET_PATH } from '../../constants/plans'
 
 export default function Header() {
   const { t } = useTranslation()
-  const { user, signOut } = useAuthStore()
+  const { user, signOut, isAdmin } = useAuthStore()
   const { language, toggleLanguage } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -40,6 +41,15 @@ export default function Header() {
 
             {user ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to={`/${ADMIN_SECRET_PATH}`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                  >
+                    <Shield size={18} />
+                    لوحة التحكم
+                  </Link>
+                )}
                 <Link to="/dashboard" className="btn-outline text-sm">
                   <LayoutDashboard size={18} />
                   {t('nav.dashboard')}
@@ -82,6 +92,16 @@ export default function Header() {
             </button>
             {user ? (
               <>
+                {isAdmin && (
+                  <Link
+                    to={`/${ADMIN_SECRET_PATH}`}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Shield size={18} />
+                    لوحة التحكم
+                  </Link>
+                )}
                 <Link to="/dashboard" className="btn-outline text-sm" onClick={() => setMobileOpen(false)}>
                   <LayoutDashboard size={18} />
                   {t('nav.dashboard')}
