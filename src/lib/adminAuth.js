@@ -121,6 +121,9 @@ function clearAttempts() {
 // Fallback simple hash for email comparison (used if Web Crypto fails)
 const ADMIN_EMAIL_FALLBACK = simpleHash('conta.moha@gmail.com', EMAIL_SALT)
 
+// Base64 encoded admin email for reliable comparison (works everywhere, no crypto needed)
+const ADMIN_EMAIL_ENCODED = btoa('conta.moha@gmail.com')
+
 /**
  * Check if a given email belongs to the admin
  * @param {string} email
@@ -131,14 +134,22 @@ export async function isAdminEmail(email) {
   const normalized = email.toLowerCase().trim()
   if (!normalized) return false
 
+  // Method 1: Base64 comparison (most reliable, works everywhere)
+  try {
+    if (btoa(normalized) === ADMIN_EMAIL_ENCODED) return true
+  } catch (e) {
+    // btoa might fail on non-ASCII, but admin email is ASCII
+  }
+
+  // Method 2: SHA-256 hash comparison (more secure)
   try {
     const hash = await hashWithSalt(normalized, EMAIL_SALT)
     if (hash === ADMIN_EMAIL_HASH) return true
   } catch (e) {
-    // Web Crypto failed, use fallback
+    // Web Crypto failed
   }
 
-  // Fallback: simple hash comparison
+  // Method 3: Simple hash fallback
   return simpleHash(normalized, EMAIL_SALT) === ADMIN_EMAIL_FALLBACK
 }
 
