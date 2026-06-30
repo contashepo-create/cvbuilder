@@ -569,63 +569,27 @@ export default function AdminPage() {
                         <th className="text-start py-2 px-3">{isAr ? 'الاسم' : 'Name'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'الإيميل' : 'Email'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'الهاتف' : 'Phone'}</th>
-                        <th className="text-start py-2 px-3">{isAr ? 'الباقة' : 'Plan'}</th>
-                        <th className="text-start py-2 px-3">{isAr ? 'الحد' : 'Limit'}</th>
+                        <th className="text-start py-2 px-3">{isAr ? 'المدينة' : 'City'}</th>
+                        <th className="text-start py-2 px-3">{isAr ? 'الباقة / الحد' : 'Plan / Limit'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'إجراءات' : 'Actions'}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((u) => {
-                        const userSub = allSubs.find(s => s.user_id === u.id)
-                        const isBlocked = userSub?.status === 'blocked'
-                        return (
-                        <tr key={u.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isBlocked ? 'bg-red-50' : ''}`}>
-                          <td className="py-2 px-3">{u.full_name}</td>
-                          <td className="py-2 px-3" dir="ltr">{u.email || '—'}</td>
-                          <td className="py-2 px-3" dir="ltr">{u.phone_number || '—'}</td>
-                          <td className="py-2 px-3">
-                            {isBlocked ? (
-                              <span className="badge bg-red-100 text-red-700">{isAr ? 'محظور' : 'Blocked'}</span>
-                            ) : (
-                              <span className="badge bg-blue-100 text-blue-700">{userSub?.plan || 'free'}</span>
-                            )}
-                          </td>
-                          <td className="py-2 px-3">
-                            {userSub?.custom_max_cvs || PLANS[userSub?.plan]?.maxCVs || 1}
-                          </td>
-                          <td className="py-2 px-3">
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {!isBlocked && (
-                                <select
-                                  onChange={(e) => { if (e.target.value) handleActivateUser(u.id, e.target.value); e.target.value = '' }}
-                                  className="text-xs border border-gray-300 rounded px-1.5 py-1"
-                                  defaultValue=""
-                                >
-                                  <option value="" disabled>{isAr ? 'باقة' : 'Plan'}</option>
-                                  <option value="free">{isAr ? 'مجاني' : 'Free'}</option>
-                                  <option value="starter">Starter</option>
-                                  <option value="pro">Pro</option>
-                                </select>
-                              )}
-                              <input
-                                type="number"
-                                placeholder={isAr ? 'حد مخصص' : 'Custom limit'}
-                                className="text-xs border border-gray-300 rounded px-1.5 py-1 w-20"
-                                onKeyDown={(e) => { if (e.key === 'Enter' && e.target.value) handleSetCustomLimit(u.id, e.target.value) }}
-                              />
-                              {isBlocked ? (
-                                <button onClick={() => handleUnblockUser(u.id)} className="text-xs text-green-600 hover:text-green-800 px-1.5 py-1 rounded bg-green-50">
-                                  {isAr ? 'فك حظر' : 'Unblock'}
-                                </button>
-                              ) : (
-                                <button onClick={() => handleBlockUser(u.id)} className="text-xs text-red-600 hover:text-red-800 px-1.5 py-1 rounded bg-red-50">
-                                  {isAr ? 'حظر' : 'Block'}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )})}
+                      {filteredUsers.map((u) => (
+                        <UserRow
+                          key={u.id}
+                          user={u}
+                          allSubs={allSubs}
+                          isAr={isAr}
+                          onActivate={handleActivateUser}
+                          onBlock={handleBlockUser}
+                          onUnblock={handleUnblockUser}
+                          onSetCustomLimit={handleSetCustomLimit}
+                          onReload={loadAllData}
+                          supabase={supabase}
+                          PLANS={PLANS}
+                        />
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -902,5 +866,146 @@ function StatCard({ icon: Icon, label, value, color }) {
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-sm text-gray-500">{label}</div>
     </div>
+  )
+}
+
+// ---- User Row Component (separate to allow useState) ----
+function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSetCustomLimit, onReload, supabase, PLANS }) {
+  const userSub = allSubs.find(s => s.user_id === u.id)
+  const isBlocked = userSub?.status === 'blocked'
+  const currentLimit = userSub?.custom_max_cvs || PLANS[userSub?.plan]?.maxCVs || 1
+
+  const [editName, setEditName] = useState(u.full_name)
+  const [editPhone, setEditPhone] = useState(u.phone_number)
+  const [editCity, setEditCity] = useState(u.city)
+  const [customLimit, setCustomLimit] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await supabase.from('profiles').update({
+        full_name: editName,
+        phone_number: editPhone,
+        city: editCity,
+      }).eq('id', u.id)
+
+      if (customLimit) {
+        await onSetCustomLimit(u.id, customLimit)
+      }
+
+      alert(isAr ? 'تم الحفظ بنجاح' : 'Saved successfully')
+      setEditing(false)
+      setCustomLimit('')
+      onReload()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <tr className={`border-b border-gray-100 ${isBlocked ? 'bg-red-50' : ''} ${editing ? 'bg-blue-50' : ''}`}>
+      <td className="py-2 px-3">
+        {editing ? (
+          <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="text-xs border border-gray-300 rounded px-2 py-1 w-full" maxLength={100} />
+        ) : (
+          u.full_name
+        )}
+      </td>
+      <td className="py-2 px-3" dir="ltr">{u.email || '—'}</td>
+      <td className="py-2 px-3">
+        {editing ? (
+          <input type="text" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="text-xs border border-gray-300 rounded px-2 py-1 w-full" dir="ltr" maxLength={20} />
+        ) : (
+          <span dir="ltr">{u.phone_number || '—'}</span>
+        )}
+      </td>
+      <td className="py-2 px-3">
+        {editing ? (
+          <input type="text" value={editCity} onChange={(e) => setEditCity(e.target.value)} className="text-xs border border-gray-300 rounded px-2 py-1 w-full" maxLength={50} />
+        ) : (
+          u.city || '—'
+        )}
+      </td>
+      <td className="py-2 px-3">
+        <div className="flex flex-col gap-1">
+          {isBlocked ? (
+            <span className="badge bg-red-100 text-red-700 w-fit">{isAr ? 'محظور' : 'Blocked'}</span>
+          ) : (
+            <span className="badge bg-blue-100 text-blue-700 w-fit">{userSub?.plan || 'free'}</span>
+          )}
+          <span className="text-xs text-gray-400">
+            {isAr ? `الحد: ${currentLimit} سي في` : `Limit: ${currentLimit} CVs`}
+          </span>
+        </div>
+      </td>
+      <td className="py-2 px-3">
+        {editing ? (
+          <div className="flex flex-col gap-1.5">
+            {/* Custom CV limit */}
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                placeholder={isAr ? 'عدد السي فيات' : 'CV limit'}
+                value={customLimit}
+                onChange={(e) => setCustomLimit(e.target.value)}
+                className="text-xs border border-gray-300 rounded px-2 py-1 w-24"
+              />
+              <span className="text-xs text-gray-400">{isAr ? 'سي في' : 'CVs'}</span>
+            </div>
+            {/* Plan selector */}
+            <select
+              onChange={(e) => { if (e.target.value) onActivate(u.id, e.target.value); e.target.value = '' }}
+              className="text-xs border border-gray-300 rounded px-1.5 py-1"
+              defaultValue=""
+            >
+              <option value="" disabled>{isAr ? 'تغيير الباقة' : 'Change plan'}</option>
+              <option value="free">{isAr ? 'مجاني (1)' : 'Free (1)'}</option>
+              <option value="starter">{isAr ? 'بداية (3)' : 'Starter (3)'}</option>
+              <option value="pro">{isAr ? 'احترافي (5)' : 'Pro (5)'}</option>
+            </select>
+            {/* Save / Cancel */}
+            <div className="flex gap-1">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="text-xs text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded flex items-center gap-1 font-medium"
+              >
+                {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                {isAr ? 'حفظ' : 'Save'}
+              </button>
+              <button
+                onClick={() => { setEditing(false); setCustomLimit('') }}
+                className="text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded flex items-center gap-1"
+              >
+                <X size={12} />
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setEditing(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded bg-blue-50 flex items-center gap-1 font-medium"
+            >
+              {isAr ? 'تعديل' : 'Edit'}
+            </button>
+            {isBlocked ? (
+              <button onClick={() => onUnblock(u.id)} className="text-xs text-green-600 hover:text-green-800 px-2 py-1 rounded bg-green-50">
+                {isAr ? 'فك حظر' : 'Unblock'}
+              </button>
+            ) : (
+              <button onClick={() => onBlock(u.id)} className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded bg-red-50">
+                {isAr ? 'حظر' : 'Block'}
+              </button>
+            )}
+          </div>
+        )}
+      </td>
+    </tr>
   )
 }
