@@ -217,8 +217,19 @@ export default function AdminPage() {
 
   const handleGenerateCodes = async () => {
     try {
-      const customCVs = genCustomCVs ? parseInt(genCustomCVs) : null
-      const newCodes = await generateActivationCodes(genPlan, parseInt(genCount), customCVs)
+      let plan = genPlan
+      let customCVs = genCustomCVs ? parseInt(genCustomCVs) : null
+
+      // If custom plan, use 'custom' as plan name and set customCVs
+      if (genPlan === 'custom') {
+        if (!customCVs || customCVs < 1) {
+          alert(isAr ? 'أدخل عدد السي فيات' : 'Enter CV count')
+          return
+        }
+        plan = 'pro' // Base plan is pro, but custom_cvs overrides
+      }
+
+      const newCodes = await generateActivationCodes(plan, parseInt(genCount), customCVs)
       setGenResult(newCodes)
       const codes = await fetchActivationCodes()
       setAllCodes(codes)
@@ -685,79 +696,151 @@ export default function AdminPage() {
             {/* Activation Codes */}
             {tab === 'codes' && (
               <div>
+                {/* Generate new codes */}
                 <div className="card mb-6">
                   <h3 className="font-semibold mb-3">{isAr ? 'توليد أكواد جديدة' : 'Generate New Codes'}</h3>
-                  <div className="flex flex-wrap items-end gap-3">
+
+                  {/* Plan selector with CV counts */}
+                  <div className="flex flex-wrap items-end gap-3 mb-3">
                     <div>
                       <label className="label">{isAr ? 'الباقة' : 'Plan'}</label>
                       <select value={genPlan} onChange={(e) => setGenPlan(e.target.value)} className="input">
-                        <option value="free">{isAr ? 'مجاني' : 'Free'}</option>
-                        <option value="starter">Starter (3 CVs)</option>
-                        <option value="pro">Pro (5 CVs)</option>
+                        <option value="free">{isAr ? 'مجاني (1 سي في)' : 'Free (1 CV)'}</option>
+                        <option value="starter">{isAr ? 'بداية (3 سي فيات)' : 'Starter (3 CVs)'}</option>
+                        <option value="pro">{isAr ? 'احترافي (5 سي فيات)' : 'Pro (5 CVs)'}</option>
+                        <option value="custom">{isAr ? 'مخصص — حدد العدد' : 'Custom — set count'}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="label">{isAr ? 'العدد' : 'Count'}</label>
-                      <input type="number" min="1" max="50" value={genCount} onChange={(e) => setGenCount(e.target.value)} className="input w-20" />
+                      <label className="label">{isAr ? 'عدد الأكواد' : 'Number of codes'}</label>
+                      <input type="number" min="1" max="50" value={genCount} onChange={(e) => setGenCount(e.target.value)} className="input w-24" />
                     </div>
-                    <div>
-                      <label className="label">{isAr ? 'حد مخصص (اختياري)' : 'Custom limit (optional)'}</label>
-                      <input type="number" min="1" placeholder={isAr ? 'مثال: 10' : 'e.g. 10'} value={genCustomCVs} onChange={(e) => setGenCustomCVs(e.target.value)} className="input w-28" />
-                    </div>
-                    <button onClick={handleGenerateCodes} className="btn-primary">
-                      <Ticket size={18} /> {isAr ? 'توليد' : 'Generate'}
+                    {genPlan === 'custom' && (
+                      <div>
+                        <label className="label">{isAr ? 'عدد السي فيات' : 'Number of CVs'}</label>
+                        <input type="number" min="1" placeholder={isAr ? 'مثال: 7' : 'e.g. 7'} value={genCustomCVs} onChange={(e) => setGenCustomCVs(e.target.value)} className="input w-24" />
+                      </div>
+                    )}
+                    <button
+                      onClick={handleGenerateCodes}
+                      className="btn-primary"
+                      disabled={genPlan === 'custom' && !genCustomCVs}
+                    >
+                      <Ticket size={18} /> {isAr ? 'توليد الأكواد' : 'Generate Codes'}
                     </button>
                   </div>
+
+                  {/* Generated codes result */}
                   {genResult.length > 0 && (
-                    <div className="mt-4 p-3 rounded-lg bg-green-50 border border-green-200">
-                      <p className="text-sm font-medium text-green-700 mb-2">{isAr ? 'أكواد مولّدة:' : 'Generated codes:'}</p>
-                      <div className="space-y-1">
-                        {genResult.map((c, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <code className="text-lg font-mono font-bold text-green-800">{c.code}</code>
-                            <button onClick={() => copyToClipboard(c.code)} className="text-gray-400 hover:text-gray-600">
-                              <Copy size={14} />
-                            </button>
-                          </div>
-                        ))}
+                    <div className="mt-4 p-4 rounded-lg bg-green-50 border border-green-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-medium text-green-700">
+                          {isAr ? `✅ تم توليد ${genResult.length} كود:` : `✅ ${genResult.length} codes generated:`}
+                        </p>
+                        <button
+                          onClick={() => {
+                            const allCodes = genResult.map(c => c.code).join('\n')
+                            copyToClipboard(allCodes)
+                            alert(isAr ? 'تم نسخ كل الأكواد' : 'All codes copied!')
+                          }}
+                          className="btn bg-green-600 text-white hover:bg-green-700 text-sm"
+                        >
+                          <Copy size={14} /> {isAr ? 'نسخ الكل' : 'Copy All'}
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {genResult.map((c, i) => {
+                          const cvCount = c.custom_cvs || PLANS[c.plan]?.maxCVs || '?'
+                          return (
+                            <div key={i} className="flex items-center gap-3 p-2 rounded-md bg-white border border-green-100">
+                              <span className="text-xs text-gray-400">#{i + 1}</span>
+                              <code className="text-lg font-mono font-bold text-green-800">{c.code}</code>
+                              <span className="badge bg-blue-100 text-blue-700 text-xs">
+                                {cvCount} {isAr ? 'سي في' : 'CVs'}
+                              </span>
+                              <button onClick={() => copyToClipboard(c.code)} className="text-gray-400 hover:text-green-600 ml-auto">
+                                <Copy size={16} />
+                              </button>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-start py-2 px-3">{isAr ? 'الكود' : 'Code'}</th>
-                        <th className="text-start py-2 px-3">{isAr ? 'الباقة' : 'Plan'}</th>
-                        <th className="text-start py-2 px-3">{isAr ? 'الحالة' : 'Status'}</th>
-                        <th className="text-start py-2 px-3">{isAr ? 'الانتهاء' : 'Expires'}</th>
-                        <th className="text-start py-2 px-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allCodes.map((c) => (
-                        <tr key={c.id} className="border-b border-gray-100">
-                          <td className="py-2 px-3 font-mono">{c.code}</td>
-                          <td className="py-2 px-3">{c.plan}</td>
-                          <td className="py-2 px-3">
-                            <span className={`badge ${c.status === 'unused' ? 'bg-green-100 text-green-700' : c.status === 'used' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-700'}`}>
-                              {c.status}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 text-gray-500">{c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}</td>
-                          <td className="py-2 px-3">
-                            {c.status === 'unused' && (
-                              <button onClick={() => copyToClipboard(c.code)} className="text-gray-400 hover:text-gray-600">
-                                <Copy size={14} />
-                              </button>
-                            )}
-                          </td>
+                {/* All codes table */}
+                <div className="card">
+                  <h3 className="font-semibold mb-3">{isAr ? 'كل الأكواد' : 'All Codes'}</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-start py-2 px-3">{isAr ? 'الكود' : 'Code'}</th>
+                          <th className="text-start py-2 px-3">{isAr ? 'عدد السي فيات' : 'CVs'}</th>
+                          <th className="text-start py-2 px-3">{isAr ? 'الحالة' : 'Status'}</th>
+                          <th className="text-start py-2 px-3">{isAr ? 'استُخدم بواسطة' : 'Used by'}</th>
+                          <th className="text-start py-2 px-3">{isAr ? 'تاريخ الاستخدام' : 'Used at'}</th>
+                          <th className="text-start py-2 px-3">{isAr ? 'الانتهاء' : 'Expires'}</th>
+                          <th className="text-start py-2 px-3"></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {allCodes.length === 0 && (
+                          <tr>
+                            <td colSpan="7" className="text-center text-gray-400 py-6">
+                              {isAr ? 'لا توجد أكواد بعد — ولّد أكواد جديدة' : 'No codes yet — generate new codes above'}
+                            </td>
+                          </tr>
+                        )}
+                        {allCodes.map((c) => {
+                          const cvCount = c.custom_cvs || PLANS[c.plan]?.maxCVs || '?'
+                          const usedByUser = allUsers.find(u => u.id === c.used_by)
+                          return (
+                            <tr key={c.id} className={`border-b border-gray-100 ${c.status === 'used' ? 'bg-gray-50' : ''}`}>
+                              <td className="py-2 px-3 font-mono font-bold">{c.code}</td>
+                              <td className="py-2 px-3">
+                                <span className="badge bg-blue-100 text-blue-700">{cvCount} {isAr ? 'سي في' : 'CVs'}</span>
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className={`badge ${
+                                  c.status === 'unused' ? 'bg-green-100 text-green-700' :
+                                  c.status === 'used' ? 'bg-gray-200 text-gray-600' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {c.status === 'unused' ? (isAr ? 'غير مستخدم' : 'Unused') :
+                                   c.status === 'used' ? (isAr ? 'مستخدم' : 'Used') :
+                                   (isAr ? 'منتهي' : 'Expired')}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-xs text-gray-500">
+                                {usedByUser ? (usedByUser.email || usedByUser.full_name) : '—'}
+                              </td>
+                              <td className="py-2 px-3 text-xs text-gray-500">
+                                {c.used_at ? new Date(c.used_at).toLocaleDateString() : '—'}
+                              </td>
+                              <td className="py-2 px-3 text-xs text-gray-500">
+                                {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}
+                              </td>
+                              <td className="py-2 px-3">
+                                {c.status === 'unused' && (
+                                  <button
+                                    onClick={() => {
+                                      copyToClipboard(c.code)
+                                      alert(isAr ? 'تم نسخ الكود' : 'Code copied!')
+                                    }}
+                                    className="btn bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs px-2 py-1"
+                                  >
+                                    <Copy size={12} /> {isAr ? 'نسخ' : 'Copy'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
