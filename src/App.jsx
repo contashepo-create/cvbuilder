@@ -1,0 +1,72 @@
+import { useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
+import { useAuthStore } from './store/authStore'
+import Header from './components/layout/Header'
+import Footer from './components/layout/Footer'
+import ProtectedRoute from './components/layout/ProtectedRoute'
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import EmailVerifyPage from './pages/EmailVerifyPage'
+import DashboardPage from './pages/DashboardPage'
+import BuilderPage from './pages/BuilderPage'
+import AnalysisPage from './pages/AnalysisPage'
+import PricingPage from './pages/PricingPage'
+import PaymentPage from './pages/PaymentPage'
+import ActivationPage from './pages/ActivationPage'
+import AdminPage from './pages/AdminPage'
+import NotFoundPage from './pages/NotFoundPage'
+import { ADMIN_SECRET_PATH } from './constants/plans'
+
+export default function App() {
+  const init = useAuthStore((s) => s.init)
+
+  useEffect(() => {
+    init()
+  }, [init])
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<EmailVerifyPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/payment/:planId" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
+          <Route path="/activate" element={<ProtectedRoute><ActivationPage /></ProtectedRoute>} />
+          {/* Hidden admin route — not linked anywhere */}
+          <Route path={`/${ADMIN_SECRET_PATH}`} element={<AdminPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/builder/:id"
+            element={
+              <ProtectedRoute>
+                <BuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analysis/:id"
+            element={
+              <ProtectedRoute>
+                <AnalysisPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </main>
+      <Footer />
+    </div>
+  )
+}
