@@ -63,6 +63,7 @@ export const useAuthStore = create((set, get) => ({
             .from('profiles')
             .upsert({
               id: user.id,
+              email: user.email,
               full_name: fullName,
               phone_number: user.user_metadata?.phone_number || '',
               city: user.user_metadata?.city || '',
@@ -127,6 +128,7 @@ export const useAuthStore = create((set, get) => ({
       try {
         await supabase.from('profiles').upsert({
           id: data.user.id,
+          email: data.user.email,
           full_name: fullName,
           phone_number: phoneNumber,
           city,
@@ -177,6 +179,7 @@ export const useAuthStore = create((set, get) => ({
         .from('profiles')
         .upsert({
           id: data.user.id,
+          email: data.user.email,
           full_name: fullName,
           phone_number: data.user.user_metadata?.phone_number || '',
           city: data.user.user_metadata?.city || '',

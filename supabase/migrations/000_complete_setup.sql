@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email        TEXT,
   full_name    TEXT NOT NULL,
   phone_number TEXT NOT NULL,
   city         TEXT NOT NULL,
@@ -120,13 +121,19 @@ CREATE TABLE IF NOT EXISTS public.activation_codes (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, phone_number, city)
+  INSERT INTO public.profiles (id, email, full_name, phone_number, city)
   VALUES (
     NEW.id,
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
     COALESCE(NEW.raw_user_meta_data->>'phone_number', ''),
     COALESCE(NEW.raw_user_meta_data->>'city', '')
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    phone_number = EXCLUDED.phone_number,
+    city = EXCLUDED.city;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
