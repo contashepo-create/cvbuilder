@@ -54,12 +54,18 @@ export const useAuthStore = create((set, get) => ({
           .select('*')
           .eq('id', user.id)
           .single()
-        const admin = await isAdminEmail(user.email)
+        let admin = false
+        try {
+          admin = await isAdminEmail(user.email)
+        } catch (e) {
+          console.error('Admin check failed:', e)
+        }
         set({ user, profile, session, isAdmin: admin, loading: false })
       } else {
         set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
       }
     } catch (error) {
+      console.error('Auth init error:', error)
       set({ error: error.message, loading: false })
     }
   },
@@ -126,7 +132,12 @@ export const useAuthStore = create((set, get) => ({
       .single()
 
     // Check if admin email (hash comparison)
-    const admin = await isAdminEmail(data.user.email)
+    let admin = false
+    try {
+      admin = await isAdminEmail(data.user.email)
+    } catch (e) {
+      console.error('Admin check failed:', e)
+    }
 
     set({ user: data.user, profile, session: data.session, isAdmin: admin })
     return data

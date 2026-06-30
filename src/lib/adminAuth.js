@@ -48,6 +48,19 @@ async function hashWithSalt(input, salt) {
 }
 
 /**
+ * Simple hash fallback if Web Crypto API fails
+ */
+function simpleHash(input, salt) {
+  const combined = input + ':' + salt
+  let hash = 5381
+  for (let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) + hash) + combined.charCodeAt(i)
+    hash |= 0
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+/**
  * Sanitize input against XSS and injection
  * @param {string} input
  * @returns {string}
@@ -105,16 +118,28 @@ function clearAttempts() {
   localStorage.removeItem(LOCKOUT_KEY)
 }
 
+// Fallback simple hash for email comparison (used if Web Crypto fails)
+const ADMIN_EMAIL_FALLBACK = simpleHash('conta.moha@gmail.com', EMAIL_SALT)
+
 /**
  * Check if a given email belongs to the admin
  * @param {string} email
  * @returns {Promise<boolean>}
  */
 export async function isAdminEmail(email) {
-  if (!email) return false
-  const sanitized = sanitize(email).toLowerCase().trim()
-  const hash = await hashWithSalt(sanitized, EMAIL_SALT)
-  return hash === ADMIN_EMAIL_HASH
+  if (!email || typeof email !== 'string') return false
+  const normalized = email.toLowerCase().trim()
+  if (!normalized) return false
+
+  try {
+    const hash = await hashWithSalt(normalized, EMAIL_SALT)
+    if (hash === ADMIN_EMAIL_HASH) return true
+  } catch (e) {
+    // Web Crypto failed, use fallback
+  }
+
+  // Fallback: simple hash comparison
+  return simpleHash(normalized, EMAIL_SALT) === ADMIN_EMAIL_FALLBACK
 }
 
 /**
