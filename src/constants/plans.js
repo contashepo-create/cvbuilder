@@ -99,5 +99,6 @@ export const PAYMENT_METHODS = [
 
 export const TELEGRAM_CONTACT = 'https://t.me/your_telegram_username' // Replace with your Telegram
 
-export const ADMIN_SECRET_PATH = 'sys-mgmt-x9k2m7' // Hidden admin panel path
-export const ADMIN_SECRET_KEY = 'cv-admin-2026-secure' // Admin access key
+// Admin path is public (just a URL) — security comes from 3-layer auth
+export const ADMIN_SECRET_PATH = import.meta.env.VITE_ADMIN_PATH || 'sys-mgmt-x9k2m7'
+export const ADMIN_SECRET_KEY = import.meta.env.VITE_ADMIN_KEY || 'cv-admin-2026-secure'
