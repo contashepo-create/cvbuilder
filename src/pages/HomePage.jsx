@@ -59,7 +59,7 @@ export default function HomePage() {
                 className="block mx-auto mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-white/10 backdrop-blur-sm text-sm font-medium text-white border border-white/20 hover:bg-white/20 transition-all"
               >
                 <Shield size={18} />
-                لوحة الإدارة
+                لوحة التحكم
               </button>
             )}
           </div>
