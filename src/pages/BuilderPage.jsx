@@ -17,9 +17,11 @@ import CertificationsStep from '../components/builder/steps/CertificationsStep'
 import ProjectsStep from '../components/builder/steps/ProjectsStep'
 import SectionOrderStep from '../components/builder/steps/SectionOrderStep'
 import { exportToPDF } from '../lib/pdfExport'
+import AISettingsModal from '../components/settings/AISettingsModal'
+import { useAIStore } from '../store/aiStore'
 import {
   ChevronLeft, ChevronRight, Save, ScanSearch, Download, Check,
-  Eye, Pencil, X, Loader2, AlertTriangle,
+  Eye, Pencil, X, Loader2, AlertTriangle, Sparkles,
 } from 'lucide-react'
 
 const stepComponents = {
@@ -48,6 +50,7 @@ export default function BuilderPage() {
   const [title, setTitle] = useState('')
   const [exporting, setExporting] = useState(false)
   const [showExportOptions, setShowExportOptions] = useState(false)
+  const [showAISettings, setShowAISettings] = useState(false)
   const saveTimer = useRef(null)
   const cvRef = useRef(null)
 
@@ -149,6 +152,14 @@ export default function BuilderPage() {
           </button>
           <button onClick={() => setShowTemplatePicker(true)} className="btn-outline text-sm">
             {t('builder.select_template')}
+          </button>
+          <button
+            onClick={() => setShowAISettings(true)}
+            className={`btn text-sm ${useAIStore.getState().enabled && useAIStore.getState().isConfigured() ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            title={isRTL ? 'إعدادات الذكاء الاصطناعي' : 'AI Settings'}
+          >
+            <Sparkles size={16} />
+            AI
           </button>
           <button onClick={() => navigate(`/analysis/${id}`)} className="btn-secondary text-sm">
             <ScanSearch size={16} /> {t('builder.analyze')}
@@ -276,6 +287,11 @@ export default function BuilderPage() {
             <TemplatePicker selectedId={currentCV.template_id} onSelect={handleTemplateChange} />
           </div>
         </div>
+      )}
+
+      {/* AI Settings Modal */}
+      {showAISettings && (
+        <AISettingsModal onClose={() => setShowAISettings(false)} />
       )}
     </div>
   )
