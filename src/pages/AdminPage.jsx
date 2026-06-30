@@ -9,11 +9,11 @@ import { PLANS, PAYMENT_METHODS, ADMIN_SECRET_PATH, ADMIN_SECRET_KEY } from '../
 import {
   Users, FileText, CreditCard, Ticket, Flag, Check, X,
   Crown, Copy, LogOut, Search, Shield, Loader2, AlertTriangle,
-  KeyRound, MessageCircle, Clock, Lock, Eye, EyeOff,
+  KeyRound, MessageCircle, Clock,
 } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
 import { send2FACode } from '../lib/telegramBot'
-import { verifyAdminPassword, createAdminSession, verifyAdminSession, destroyAdminSession, checkLockout } from '../lib/adminAuth'
+import { createAdminSession, verifyAdminSession, destroyAdminSession } from '../lib/adminAuth'
 
 // 2FA state management outside component (persists across renders)
 let pending2FA = null // { code, expiresAt }
@@ -27,18 +27,13 @@ export default function AdminPage() {
   const { generateActivationCodes, fetchActivationCodes, adminActivatePlan } = useSubscriptionStore()
   const { fetchAllPaymentRequests, updatePaymentStatus, paymentRequests } = usePaymentStore()
 
-  // authStep: 'idle' → '2fa-pending' → 'password' → 'authed'
-  const [authStep, setAuthStep] = useState('idle')
+  // authStep: 'check-login' → '2fa-pending' → 'key' → 'authed'
+  const [authStep, setAuthStep] = useState('check-login')
   const [keyInput, setKeyInput] = useState('')
   const [code2FA, setCode2FA] = useState('')
-  const [twoFAError, setTwoFAError] = useState('')
+  const [authError, setAuthError] = useState('')
   const [sending2FA, setSending2FA] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
-  // Password verification state
-  const [passInput, setPassInput] = useState('')
-  const [showPass, setShowPass] = useState(false)
-  const [passError, setPassError] = useState('')
-  const [passLoading, setPassLoading] = useState(false)
   const [tab, setTab] = useState('overview')
   const [allUsers, setAllUsers] = useState([])
   const [allCVs, setAllCVs] = useState([])
@@ -51,18 +46,25 @@ export default function AdminPage() {
 
   const authed = authStep === 'authed'
 
-  // Check existing session on mount
+  // Check existing session + login status on mount
   useEffect(() => {
     const session = verifyAdminSession()
     if (session.valid) {
       setAuthStep('authed')
+      return
     }
 
-    // Redirect non-admin users away
-    if (!isAdmin && !DEMO_MODE) {
-      // Allow demo mode to test admin panel
+    // If user is logged in AND is admin → auto-send 2FA
+    if (user && isAdmin) {
+      send2FA()
+    } else if (user && !isAdmin) {
+      // Logged in but not admin
+      setAuthStep('denied')
+    } else {
+      // Not logged in
+      setAuthStep('login-required')
     }
-  }, [])
+  }, [user, isAdmin])
 
   // Resend timer countdown
   useEffect(() => {
@@ -85,142 +87,89 @@ export default function AdminPage() {
     return `${browser} (${os})`
   }
 
-  // Step 1: Verify admin key, then send 2FA code to Telegram
-  const handleKeySubmit = async (e) => {
-    e.preventDefault()
-    setTwoFAError('')
-
-    if (keyInput !== ADMIN_SECRET_KEY) {
-      setTwoFAError(isAr ? 'مفتاح خاطئ' : 'Wrong access key')
-      return
-    }
-
+  // Auto-send 2FA code to Telegram when admin enters
+  const send2FA = async () => {
     setSending2FA(true)
+    setAuthError('')
 
-    // Generate 6-digit code, valid for 5 minutes
     const code = generate2FACode()
     const expiresAt = Date.now() + 5 * 60 * 1000 // 5 minutes
     pending2FA = { code, expiresAt }
 
-    // Send code to Telegram
     const deviceInfo = getDeviceInfo()
     const sent = await send2FACode(code, deviceInfo)
 
     if (!sent && !import.meta.env.VITE_TELEGRAM_BOT_TOKEN) {
-      // Demo mode — show the code in console for testing
-      console.log(`[2FA] Demo mode — Code: ${code}`)
-      setTwoFAError(
+      console.log(`[2FA] No bot token — Code: ${code}`)
+      setAuthError(
         isAr
-          ? `وضع التجربة — الرمز: ${code} (لن يظهر هذا في وضع الإنتاج)`
-          : `Demo mode — Code: ${code} (this won't show in production)`
+          ? `وضع التجربة — الرمز: ${code}`
+          : `Demo mode — Code: ${code}`
       )
-    } else if (sent) {
-      setTwoFAError('')
-    } else {
-      setTwoFAError(isAr ? 'تعذّر إرسال الرمز. حاول مرة أخرى.' : 'Failed to send code. Try again.')
+    } else if (!sent) {
+      setAuthError(isAr ? 'تعذّر إرسال الرمز. حاول مرة أخرى.' : 'Failed to send code.')
       setSending2FA(false)
       return
     }
 
     setAuthStep('2fa-pending')
-    setResendTimer(60) // 60 seconds before resend
-    setSending2FA(false)
-  }
-
-  // Step 2: Verify the 2FA code
-  const handle2FAVerify = (e) => {
-    e.preventDefault()
-    setTwoFAError('')
-
-    if (!pending2FA) {
-      setTwoFAError(isAr ? 'انتهت الجلسة. أعد المحاولة.' : 'Session expired. Try again.')
-      setAuthStep('idle')
-      return
-    }
-
-    // Check expiry
-    if (Date.now() > pending2FA.expiresAt) {
-      setTwoFAError(isAr ? 'انتهت صلاحية الرمز. أعد الإرسال.' : 'Code expired. Resend.')
-      pending2FA = null
-      setAuthStep('idle')
-      setKeyInput('')
-      return
-    }
-
-    // Verify code
-    if (code2FA.trim() === pending2FA.code) {
-      pending2FA = null
-      setCode2FA('')
-      // Don't grant access yet — go to password step
-      setAuthStep('password')
-    } else {
-      setTwoFAError(isAr ? 'رمز خاطئ' : 'Wrong code')
-    }
-  }
-
-  // Resend 2FA code
-  const handleResend2FA = async () => {
-    if (resendTimer > 0) return
-    setSending2FA(true)
-    setTwoFAError('')
-
-    const code = generate2FACode()
-    const expiresAt = Date.now() + 5 * 60 * 1000
-    pending2FA = { code, expiresAt }
-
-    const deviceInfo = getDeviceInfo()
-    const sent = await send2FACode(code, deviceInfo)
-
-    if (!sent && !import.meta.env.VITE_TELEGRAM_BOT_TOKEN) {
-      setTwoFAError(
-        isAr
-          ? `وضع التجربة — الرمز: ${code}`
-          : `Demo mode — Code: ${code}`
-      )
-    }
-
     setResendTimer(60)
     setSending2FA(false)
   }
 
-  // Step 3: Verify admin password (SHA-256 hash comparison)
-  const handlePasswordVerify = async (e) => {
+  // Verify 2FA code → go to key step
+  const handle2FAVerify = (e) => {
+    e?.preventDefault()
+    setAuthError('')
+
+    if (!pending2FA) {
+      setAuthError(isAr ? 'انتهت الجلسة. أعد المحاولة.' : 'Session expired.')
+      send2FA()
+      return
+    }
+
+    if (Date.now() > pending2FA.expiresAt) {
+      setAuthError(isAr ? 'انتهت صلاحية الرمز.' : 'Code expired.')
+      pending2FA = null
+      send2FA()
+      return
+    }
+
+    if (code2FA.trim() === pending2FA.code) {
+      pending2FA = null
+      setCode2FA('')
+      setAuthStep('key')
+    } else {
+      setAuthError(isAr ? 'رمز خاطئ' : 'Wrong code')
+    }
+  }
+
+  // Resend 2FA
+  const handleResend2FA = async () => {
+    if (resendTimer > 0) return
+    await send2FA()
+  }
+
+  // Verify admin key → grant access
+  const handleKeyVerify = (e) => {
     e.preventDefault()
-    setPassError('')
-    setPassLoading(true)
+    setAuthError('')
 
-    try {
-      const result = await verifyAdminPassword(passInput)
-
-      if (result.valid) {
-        createAdminSession()
-        setAuthStep('authed')
-        setPassInput('')
-        setPassError('')
-      } else {
-        if (result.error?.startsWith('LOCKED')) {
-          setPassError(isAr
-            ? `تم القفل بسبب محاولات كثيرة. انتظر ${(parseInt(result.error) || 5)} دقائق.`
-            : `Locked due to too many attempts. Wait ${result.error.match(/\d+/)?.[0] || 5} minutes.`
-          )
-        } else {
-          setPassError(isAr ? 'كلمة مرور خاطئة' : (result.error || 'Wrong password'))
-        }
-      }
-    } catch (err) {
-      setPassError(isAr ? 'حدث خطأ أثناء التحقق' : 'Verification error')
-    } finally {
-      setPassLoading(false)
+    if (keyInput === ADMIN_SECRET_KEY) {
+      createAdminSession()
+      setAuthStep('authed')
+      setKeyInput('')
+    } else {
+      setAuthError(isAr ? 'مفتاح خاطئ' : 'Wrong key')
     }
   }
 
   const handleLogout = () => {
     destroyAdminSession()
     pending2FA = null
-    setAuthStep('idle')
+    setAuthStep('check-login')
     setKeyInput('')
     setCode2FA('')
-    setPassInput('')
     navigate('/')
   }
 
@@ -313,111 +262,115 @@ export default function AdminPage() {
     u.full_name?.toLowerCase().includes(search.toLowerCase())
   )
 
-  // Auth screens — Step 1: Access Key, Step 2: Telegram 2FA, Step 3: Password
-  if (authStep === 'idle' || authStep === '2fa-pending' || authStep === 'password') {
-    const stepNum = authStep === 'idle' ? 1 : authStep === '2fa-pending' ? 2 : 3
+  // Auth screens
+  if (authStep === 'login-required') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4 py-8">
+        <div className="bg-gray-800 rounded-xl p-6 sm:p-8 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gray-700 mb-4">
+            <Shield size={28} className="text-primary-500" />
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">
+            {isAr ? 'مطلوب تسجيل الدخول' : 'Login Required'}
+          </h1>
+          <p className="text-gray-400 text-sm mb-6">
+            {isAr ? 'سجّل الدخول بحساب الأدمن للوصول للوحة التحكم' : 'Sign in with your admin account to access the panel'}
+          </p>
+          <button onClick={() => navigate('/login')} className="btn-primary w-full mb-2">
+            {isAr ? 'تسجيل الدخول' : 'Login'}
+          </button>
+          <button onClick={() => navigate('/')} className="text-gray-500 text-xs hover:text-gray-300 block mx-auto mt-4">
+            ← {isAr ? 'العودة للموقع' : 'Back to site'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (authStep === 'denied') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4 py-8">
+        <div className="bg-gray-800 rounded-xl p-6 sm:p-8 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-red-900 mb-4">
+            <AlertTriangle size={28} className="text-red-500" />
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">
+            {isAr ? 'غير مصرّح' : 'Access Denied'}
+          </h1>
+          <p className="text-gray-400 text-sm mb-6">
+            {isAr ? 'هذا الحساب لا يملك صلاحية الوصول للوحة الإدارة' : 'This account does not have admin access'}
+          </p>
+          <button onClick={() => navigate('/')} className="btn-secondary w-full">
+            ← {isAr ? 'العودة للموقع' : 'Back to site'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (authStep === 'check-login' || authStep === '2fa-pending' || authStep === 'key') {
+    const stepNum = authStep === 'check-login' ? 0 : authStep === '2fa-pending' ? 1 : 2
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4 py-8">
         <div className="bg-gray-800 rounded-xl p-6 sm:p-8 max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gray-700 mb-3">
-              {authStep === 'idle' && <Shield size={28} className="text-primary-500" />}
+              {authStep === 'check-login' && <Loader2 size={28} className="text-primary-500 animate-spin" />}
               {authStep === '2fa-pending' && <MessageCircle size={28} className="text-blue-400" />}
-              {authStep === 'password' && <Lock size={28} className="text-amber-400" />}
+              {authStep === 'key' && <KeyRound size={28} className="text-amber-400" />}
             </div>
             <h1 className="text-xl font-bold text-white">
-              {authStep === 'idle' && (isAr ? 'مصادقة لوحة الإدارة' : 'Admin Panel Access')}
               {authStep === '2fa-pending' && (isAr ? 'تأكيد ثنائي عبر التليجرام' : 'Telegram 2FA Verification')}
-              {authStep === 'password' && (isAr ? 'تأكيد كلمة المرور' : 'Password Verification')}
+              {authStep === 'key' && (isAr ? 'أدخل مفتاح الأمان' : 'Enter Security Key')}
+              {authStep === 'check-login' && (isAr ? 'جاري التحقق...' : 'Verifying...')}
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              {authStep === 'idle' && (isAr ? 'أدخل مفتاح الوصول للمتابعة' : 'Enter access key to continue')}
-              {authStep === '2fa-pending' && (isAr ? 'تم إرسال رمز 6 أرقام إلى التليجرام' : 'A 6-digit code was sent to your Telegram')}
-              {authStep === 'password' && (isAr ? 'أدخل كلمة المرور لتأكيد الدخول' : 'Enter your password to confirm access')}
+              {authStep === '2fa-pending' && (isAr ? `تم إرسال رمز 6 أرقام إلى تليجرام (${user?.email})` : `A 6-digit code was sent to your Telegram (${user?.email})`)}
+              {authStep === 'key' && (isAr ? 'أدخل مفتاح الأمان لإكمال الدخول' : 'Enter the security key to complete access')}
             </p>
           </div>
 
           {/* Step indicator */}
           <div className="flex items-center justify-center gap-2 mb-6">
-            {[
-              { num: 1, icon: KeyRound, label: isAr ? 'المفتاح' : 'Key' },
-              { num: 2, icon: MessageCircle, label: isAr ? 'تليجرام' : 'Telegram' },
-              { num: 3, icon: Lock, label: isAr ? 'المرور' : 'Password' },
-            ].map((s, i) => (
-              <div key={s.num} className="flex items-center gap-2">
-                {i > 0 && <div className={`w-6 h-px ${stepNum > i ? 'bg-green-500' : 'bg-gray-600'}`} />}
-                <div className={`flex items-center gap-1.5 ${stepNum === s.num ? (s.num === 2 ? 'text-blue-400' : s.num === 3 ? 'text-amber-400' : 'text-primary-400') : stepNum > s.num ? 'text-green-400' : 'text-gray-500'}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                    stepNum === s.num
-                      ? (s.num === 2 ? 'bg-blue-500 text-white' : s.num === 3 ? 'bg-amber-500 text-white' : 'bg-primary-500 text-white')
-                      : stepNum > s.num ? 'bg-green-500 text-white' : 'bg-gray-600 text-gray-400'
-                  }`}>
-                    {stepNum > s.num ? <Check size={14} /> : s.num}
-                  </div>
-                  <span className="text-xs hidden sm:inline">{s.label}</span>
-                </div>
+            <div className={`flex items-center gap-1.5 ${stepNum >= 1 ? 'text-green-400' : 'text-gray-500'}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${stepNum >= 1 ? 'bg-green-500 text-white' : 'bg-gray-600 text-gray-400'}`}>
+                {stepNum >= 1 ? <Check size={14} /> : '1'}
               </div>
-            ))}
+              <span className="text-xs hidden sm:inline">{isAr ? 'تليجرام' : 'Telegram'}</span>
+            </div>
+            <div className={`w-6 h-px ${stepNum >= 2 ? 'bg-amber-500' : 'bg-gray-600'}`} />
+            <div className={`flex items-center gap-1.5 ${stepNum === 2 ? 'text-amber-400' : 'text-gray-500'}`}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${stepNum === 2 ? 'bg-amber-500 text-white' : 'bg-gray-600 text-gray-400'}`}>
+                2
+              </div>
+              <span className="text-xs hidden sm:inline">{isAr ? 'المفتاح' : 'Key'}</span>
+            </div>
           </div>
 
-          {/* Step 1: Key Input */}
-          {authStep === 'idle' && (
-            <form onSubmit={handleKeySubmit} className="space-y-4">
-              <div className="relative">
-                <KeyRound size={18} className="absolute top-1/2 -translate-y-1/2 start-3 text-gray-500" />
-                <input
-                  type="password"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  className="w-full ps-10 pe-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-primary-500 transition-colors"
-                  placeholder={isAr ? 'مفتاح الوصول' : 'Access Key'}
-                  autoFocus
-                  required
-                />
-              </div>
-
-              {twoFAError && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 flex items-center gap-2">
-                  <AlertTriangle size={16} className="flex-shrink-0" />
-                  {twoFAError}
-                </div>
-              )}
-
-              <button type="submit" disabled={sending2FA} className="btn-primary w-full">
-                {sending2FA
-                  ? <><Loader2 size={18} className="animate-spin" /> {isAr ? 'جاري الإرسال...' : 'Sending...'}</>
-                  : <><Shield size={18} /> {isAr ? 'متابعة' : 'Continue'}</>
-                }
-              </button>
-            </form>
-          )}
-
-          {/* Step 2: 2FA Code */}
+          {/* Step 1: 2FA Code */}
           {authStep === '2fa-pending' && (
             <form onSubmit={handle2FAVerify} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  value={code2FA}
-                  onChange={(e) => setCode2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500 text-center text-2xl font-mono tracking-[0.5em] transition-colors"
-                  placeholder="••••••"
-                  dir="ltr"
-                  autoFocus
-                  inputMode="numeric"
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                value={code2FA}
+                onChange={(e) => setCode2FA(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500 text-center text-2xl font-mono tracking-[0.5em] transition-colors"
+                placeholder="••••••"
+                dir="ltr"
+                autoFocus
+                inputMode="numeric"
+                required
+              />
 
-              {twoFAError && (
+              {authError && (
                 <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${
-                  twoFAError.includes('Demo') || twoFAError.includes('تجربة')
+                  authError.includes('Demo') || authError.includes('تجربة')
                     ? 'bg-blue-500/10 border border-blue-500/30 text-blue-300'
                     : 'bg-red-500/10 border border-red-500/30 text-red-400'
                 }`}>
                   <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-                  <span className="break-all">{twoFAError}</span>
+                  <span className="break-all">{authError}</span>
                 </div>
               )}
 
@@ -425,7 +378,6 @@ export default function AdminPage() {
                 <Check size={18} /> {isAr ? 'تأكيد' : 'Verify'}
               </button>
 
-              {/* Resend + timer */}
               <div className="text-center">
                 {resendTimer > 0 ? (
                   <p className="text-xs text-gray-500 flex items-center justify-center gap-1">
@@ -433,89 +385,44 @@ export default function AdminPage() {
                     {isAr ? `إعادة الإرسال خلال ${resendTimer} ثانية` : `Resend in ${resendTimer}s`}
                   </p>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleResend2FA}
-                    disabled={sending2FA}
-                    className="text-xs text-blue-400 hover:text-blue-300"
-                  >
+                  <button type="button" onClick={handleResend2FA} disabled={sending2FA} className="text-xs text-blue-400 hover:text-blue-300">
                     {sending2FA ? (isAr ? 'جاري الإرسال...' : 'Sending...') : (isAr ? 'إعادة إرسال الرمز' : 'Resend code')}
                   </button>
                 )}
               </div>
-
-              {/* Back to step 1 */}
-              <button
-                type="button"
-                onClick={() => { setAuthStep('idle'); setTwoFAError(''); setCode2FA(''); pending2FA = null }}
-                className="text-xs text-gray-500 hover:text-gray-300 block mx-auto"
-              >
-                ← {isAr ? 'العودة' : 'Back'}
-              </button>
             </form>
           )}
 
-          {/* Step 3: Password Verification */}
-          {authStep === 'password' && (
-            <form onSubmit={handlePasswordVerify} className="space-y-4">
+          {/* Step 2: Admin Key */}
+          {authStep === 'key' && (
+            <form onSubmit={handleKeyVerify} className="space-y-4">
               <div className="relative">
-                <Lock size={18} className="absolute top-1/2 -translate-y-1/2 start-3 text-gray-500" />
+                <KeyRound size={18} className="absolute top-1/2 -translate-y-1/2 start-3 text-gray-500" />
                 <input
-                  type={showPass ? 'text' : 'password'}
-                  value={passInput}
-                  onChange={(e) => setPassInput(e.target.value)}
-                  className="w-full ps-10 pe-10 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-amber-500 transition-colors"
-                  placeholder={isAr ? 'كلمة المرور' : 'Password'}
+                  type="password"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  className="w-full ps-10 pe-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-amber-500 transition-colors text-center text-lg tracking-widest"
+                  placeholder="••••••"
                   dir="ltr"
                   autoFocus
-                  maxLength={72}
+                  maxLength={20}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute top-1/2 -translate-y-1/2 end-3 text-gray-500 hover:text-gray-300"
-                >
-                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
 
-              {/* Password strength meter */}
-              {passInput.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <div className="flex-1 h-1 bg-gray-600 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        passInput.length < 4 ? 'bg-red-500' :
-                        passInput.length < 8 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min((passInput.length / 12) * 100, 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-gray-500">{passInput.length}</span>
+              {authError && (
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 flex items-center gap-2">
+                  <AlertTriangle size={16} className="flex-shrink-0" />
+                  {authError}
                 </div>
               )}
 
-              {passError && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 flex items-start gap-2">
-                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-                  <span>{passError}</span>
-                </div>
-              )}
-
-              <button type="submit" disabled={passLoading} className="btn bg-amber-600 text-white hover:bg-amber-700 w-full">
-                {passLoading
-                  ? <><Loader2 size={18} className="animate-spin" /> {isAr ? 'جاري التحقق...' : 'Verifying...'}</>
-                  : <><Shield size={18} /> {isAr ? 'تأكيد الدخول' : 'Confirm Access'}</>
-                }
+              <button type="submit" className="btn bg-amber-600 text-white hover:bg-amber-700 w-full">
+                <Shield size={18} /> {isAr ? 'دخول' : 'Enter'}
               </button>
 
-              {/* Back to 2FA */}
-              <button
-                type="button"
-                onClick={() => { setAuthStep('2fa-pending'); setPassError(''); setPassInput('') }}
-                className="text-xs text-gray-500 hover:text-gray-300 block mx-auto"
-              >
+              <button type="button" onClick={() => { setAuthStep('2fa-pending'); setAuthError(''); setKeyInput(''); send2FA() }} className="text-xs text-gray-500 hover:text-gray-300 block mx-auto">
                 ← {isAr ? 'العودة' : 'Back'}
               </button>
             </form>
