@@ -114,7 +114,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold">{t('dashboard.title')}</h1>
           <p className="text-gray-500">
-            {t('dashboard.welcome')}, {user?.email}
+            {t('dashboard.welcome')}, {profile?.full_name || user?.email}
           </p>
         </div>
         <button

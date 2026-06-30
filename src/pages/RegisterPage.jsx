@@ -82,7 +82,14 @@ export default function RegisterPage() {
 
       navigate('/verify-email')
     } catch (err) {
-      setApiError(err.message)
+      if (err.message === 'EMAIL_EXISTS') {
+        setApiError(isAr
+          ? 'هذا البريد الإلكتروني مسجل بالفعل. سجّل الدخول أو استخدم بريداً آخر.'
+          : 'This email is already registered. Please login or use a different email.'
+        )
+      } else {
+        setApiError(err.message)
+      }
     } finally {
       setLoading(false)
     }

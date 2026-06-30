@@ -54,13 +54,31 @@ export const useAuthStore = create((set, get) => ({
           .select('*')
           .eq('id', user.id)
           .single()
+
+        // If profile doesn't exist, create it (trigger fallback)
+        let finalProfile = profile
+        if (!profile) {
+          const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              full_name: fullName,
+              phone_number: user.user_metadata?.phone_number || '',
+              city: user.user_metadata?.city || '',
+            })
+            .select()
+            .single()
+          finalProfile = newProfile
+        }
+
         let admin = false
         try {
           admin = await isAdminEmail(user.email)
         } catch (e) {
           console.error('Admin check failed:', e)
         }
-        set({ user, profile, session, isAdmin: admin, loading: false })
+        set({ user, profile: finalProfile, session, isAdmin: admin, loading: false })
       } else {
         set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
       }
@@ -96,7 +114,28 @@ export const useAuthStore = create((set, get) => ({
         },
       },
     })
-    if (error) throw error
+    if (error) {
+      // Supabase returns "User already registered" for duplicate emails
+      if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+        throw new Error('EMAIL_EXISTS')
+      }
+      throw error
+    }
+
+    // Manually create profile if trigger didn't work
+    if (data.user) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          full_name: fullName,
+          phone_number: phoneNumber,
+          city,
+        })
+      } catch (e) {
+        console.error('Profile creation fallback:', e)
+      }
+    }
+
     return data
   },
 
@@ -130,6 +169,23 @@ export const useAuthStore = create((set, get) => ({
       .select('*')
       .eq('id', data.user.id)
       .single()
+
+    // If profile doesn't exist, create it (trigger fallback)
+    if (!profile) {
+      const fullName = data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User'
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          full_name: fullName,
+          phone_number: data.user.user_metadata?.phone_number || '',
+          city: data.user.user_metadata?.city || '',
+        })
+        .select()
+        .single()
+      set({ user: data.user, profile: newProfile, session: data.session, isAdmin: false })
+      return data
+    }
 
     // Check if admin email (hash comparison)
     let admin = false
