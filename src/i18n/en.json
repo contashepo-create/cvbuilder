@@ -8,8 +8,8 @@
   },
   "home": {
     "hero_title": "Build Your Professional CV",
-    "hero_subtitle": "A completely free platform to build your CV with smart ATS screening and professional templates",
-    "cta_start": "Start Free Now",
+    "hero_subtitle": "Create your professional CV with smart ATS screening and modern templates — your first CV is free",
+    "cta_start": "Start Now — First CV Free",
     "feature_templates_title": "Professional Templates",
     "feature_templates_desc": "5 modern templates for every field",
     "feature_ats_title": "Smart ATS Screening",
@@ -18,7 +18,7 @@
     "feature_sections_desc": "Add and reorder your CV sections as you like",
     "feature_pdf_title": "PDF Export",
     "feature_pdf_desc": "Download your CV in professional PDF format",
-    "free_badge": "100% Free"
+    "free_badge": "First CV Free"
   },
   "auth": {
     "register_title": "Create New Account",
