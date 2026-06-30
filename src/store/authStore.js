@@ -186,7 +186,15 @@ export const useAuthStore = create((set, get) => ({
         })
         .select()
         .single()
-      set({ user: data.user, profile: newProfile, session: data.session, isAdmin: false })
+
+      // Check admin EVEN when creating new profile
+      let admin = false
+      try {
+        admin = await isAdminEmail(data.user.email)
+      } catch (e) {
+        console.error('Admin check failed:', e)
+      }
+      set({ user: data.user, profile: newProfile, session: data.session, isAdmin: admin })
       return data
     }
 
