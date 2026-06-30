@@ -67,19 +67,28 @@ export const useSubscriptionStore = create((set, get) => ({
     return PLANS[planId] || PLANS.free
   },
 
+  getMaxCVs: () => {
+    const { subscription } = get()
+    // Custom limit overrides plan
+    if (subscription?.custom_max_cvs) return subscription.custom_max_cvs
+    const plan = PLANS[subscription?.plan] || PLANS.free
+    return plan.maxCVs
+  },
+
+  isBlocked: () => {
+    const { subscription } = get()
+    return subscription?.status === 'blocked'
+  },
+
   isPaid: () => {
     const { subscription } = get()
     return subscription?.plan !== 'free' && subscription?.status === 'active'
   },
 
-  getMaxCVs: () => {
-    const plan = get().getPlan()
-    return plan.maxCVs
-  },
-
   canCreateCV: (currentCVCount) => {
-    const plan = get().getPlan()
-    return currentCVCount < plan.maxCVs
+    const { subscription } = get()
+    if (subscription?.status === 'blocked') return false
+    return currentCVCount < get().getMaxCVs()
   },
 
   upgradePlan: async (userId, newPlan) => {
@@ -125,10 +134,10 @@ export const useSubscriptionStore = create((set, get) => ({
       found.used_at = new Date().toISOString()
       setDemoCodes(codes)
 
-      // Upgrade subscription
-      const sub = { plan: found.plan, status: 'active', started_at: new Date().toISOString() }
+      // Upgrade subscription (with custom CVs if specified)
+      const sub = { plan: found.plan, status: 'active', started_at: new Date().toISOString(), custom_max_cvs: found.custom_cvs || null }
       setDemoSubscription(sub)
-      set({ subscription: sub, activationSuccess: `تم تفعيل باقة ${PLANS[found.plan]?.name_ar || found.plan} بنجاح!` })
+      set({ subscription: sub, activationSuccess: `تم تفعيل باقة ${PLANS[found.plan]?.name_ar || found.plan}${found.custom_cvs ? ` (${found.custom_cvs} سي في)` : ''} بنجاح!` })
       return sub
     }
 
@@ -162,16 +171,21 @@ export const useSubscriptionStore = create((set, get) => ({
       .eq('id', codeData.id)
     if (updateCodeError) throw updateCodeError
 
-    // Upgrade subscription
+    // Upgrade subscription (with custom CVs if specified in the code)
     const { data: subData, error: subError } = await supabase
       .from('subscriptions')
-      .update({ plan: codeData.plan, status: 'active', started_at: new Date().toISOString() })
+      .update({
+        plan: codeData.plan,
+        status: 'active',
+        started_at: new Date().toISOString(),
+        custom_max_cvs: codeData.custom_cvs || null,
+      })
       .eq('user_id', userId)
       .select()
       .single()
     if (subError) throw subError
 
-    set({ subscription: subData, activationSuccess: `تم تفعيل باقة ${PLANS[codeData.plan]?.name_ar || codeData.plan} بنجاح!` })
+    set({ subscription: subData, activationSuccess: `تم تفعيل باقة ${PLANS[codeData.plan]?.name_ar || codeData.plan}${codeData.custom_cvs ? ` (${codeData.custom_cvs} سي في)` : ''} بنجاح!` })
     return subData
   },
 
@@ -228,7 +242,6 @@ export const useSubscriptionStore = create((set, get) => ({
   // Admin: directly activate a user's plan (separate from codes)
   adminActivatePlan: async (userId, plan) => {
     if (DEMO_MODE) {
-      // In demo, also update the demo user's subscription
       const sub = { plan, status: 'active', started_at: new Date().toISOString(), user_id: userId }
       setDemoSubscription(sub)
       return sub
@@ -236,11 +249,97 @@ export const useSubscriptionStore = create((set, get) => ({
 
     const { data, error } = await supabase
       .from('subscriptions')
-      .update({ plan, status: 'active', started_at: new Date().toISOString() })
+      .update({ plan, status: 'active', started_at: new Date().toISOString(), custom_max_cvs: null })
       .eq('user_id', userId)
       .select()
       .single()
     if (error) throw error
     return data
+  },
+
+  // Admin: block/ban a user
+  blockUser: async (userId) => {
+    if (DEMO_MODE) {
+      return { success: true }
+    }
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ status: 'blocked' })
+      .eq('user_id', userId)
+    if (error) throw error
+    return { success: true }
+  },
+
+  // Admin: unblock a user
+  unblockUser: async (userId) => {
+    if (DEMO_MODE) {
+      return { success: true }
+    }
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ status: 'active' })
+      .eq('user_id', userId)
+    if (error) throw error
+    return { success: true }
+  },
+
+  // Admin: set custom CV limit for a user (overrides plan)
+  setCustomCVLimit: async (userId, maxCVs) => {
+    if (DEMO_MODE) {
+      return { success: true }
+    }
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ custom_max_cvs: maxCVs })
+      .eq('user_id', userId)
+    if (error) throw error
+    return { success: true }
+  },
+
+  // Admin: generate activation code with custom CV limit
+  generateActivationCodes: async (plan, count = 1, customCVs = null) => {
+    if (DEMO_MODE) {
+      const codes = getDemoCodes()
+      const newCodes = []
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+      for (let i = 0; i < count; i++) {
+        let code = ''
+        for (let j = 0; j < 12; j++) {
+          code += chars[Math.floor(Math.random() * chars.length)]
+          if (j === 3 || j === 7) code += '-'
+        }
+        const newCode = {
+          id: crypto.randomUUID(),
+          code,
+          plan,
+          status: 'unused',
+          custom_cvs: customCVs,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+        }
+        codes.unshift(newCode)
+        newCodes.push(newCode)
+      }
+      setDemoCodes(codes)
+      return newCodes
+    }
+
+    const newCodes = []
+    for (let i = 0; i < count; i++) {
+      const { data, error } = await supabase.rpc('generate_activation_code', { plan_name: plan })
+      if (error) throw error
+
+      // If custom CVs, update the code
+      if (customCVs) {
+        await supabase
+          .from('activation_codes')
+          .update({ custom_cvs: customCVs })
+          .eq('code', data)
+      }
+
+      newCodes.push({ code: data, plan, status: 'unused', custom_cvs: customCVs })
+    }
+    return newCodes
   },
 }))

@@ -24,7 +24,7 @@ export default function AdminPage() {
   const isAr = i18n.language === 'ar'
 
   const { user, isAdmin } = useAuthStore()
-  const { generateActivationCodes, fetchActivationCodes, adminActivatePlan } = useSubscriptionStore()
+  const { generateActivationCodes, fetchActivationCodes, adminActivatePlan, blockUser, unblockUser, setCustomCVLimit } = useSubscriptionStore()
   const { fetchAllPaymentRequests, updatePaymentStatus, paymentRequests } = usePaymentStore()
 
   // authStep: 'check-login' → '2fa-pending' → 'key' → 'authed'
@@ -38,9 +38,11 @@ export default function AdminPage() {
   const [allUsers, setAllUsers] = useState([])
   const [allCVs, setAllCVs] = useState([])
   const [allCodes, setAllCodes] = useState([])
+  const [allSubs, setAllSubs] = useState([])
   const [loading, setLoading] = useState(false)
   const [genPlan, setGenPlan] = useState('starter')
   const [genCount, setGenCount] = useState(1)
+  const [genCustomCVs, setGenCustomCVs] = useState('')
   const [genResult, setGenResult] = useState([])
   const [search, setSearch] = useState('')
 
@@ -194,14 +196,16 @@ export default function AdminPage() {
         setAllCodes(codes)
         await fetchAllPaymentRequests()
       } else {
-        const [usersRes, cvsRes, codesRes] = await Promise.all([
+        const [usersRes, cvsRes, codesRes, subsRes] = await Promise.all([
           supabase.from('profiles').select('*'),
           supabase.from('cvs').select('*, profiles(email, full_name)'),
           supabase.from('activation_codes').select('*').order('created_at', { ascending: false }),
+          supabase.from('subscriptions').select('*'),
         ])
         setAllUsers(usersRes.data || [])
         setAllCVs(cvsRes.data || [])
         setAllCodes(codesRes.data || codes)
+        setAllSubs(subsRes.data || [])
         await fetchAllPaymentRequests()
       }
     } catch (err) {
@@ -213,12 +217,44 @@ export default function AdminPage() {
 
   const handleGenerateCodes = async () => {
     try {
-      const newCodes = await generateActivationCodes(genPlan, parseInt(genCount))
+      const customCVs = genCustomCVs ? parseInt(genCustomCVs) : null
+      const newCodes = await generateActivationCodes(genPlan, parseInt(genCount), customCVs)
       setGenResult(newCodes)
       const codes = await fetchActivationCodes()
       setAllCodes(codes)
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const handleBlockUser = async (userId) => {
+    if (!confirm(isAr ? 'حظر هذا المستخدم؟' : 'Block this user?')) return
+    try {
+      await blockUser(userId)
+      alert(isAr ? 'تم حظر المستخدم' : 'User blocked')
+      loadAllData()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const handleUnblockUser = async (userId) => {
+    try {
+      await unblockUser(userId)
+      alert(isAr ? 'تم إلغاء الحظر' : 'User unblocked')
+      loadAllData()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
+  const handleSetCustomLimit = async (userId, limit) => {
+    if (!limit) return
+    try {
+      await setCustomCVLimit(userId, parseInt(limit))
+      alert(isAr ? `تم تحديد العدد: ${limit} سي في` : `Limit set: ${limit} CVs`)
+    } catch (err) {
+      alert(err.message)
     }
   }
 
@@ -522,30 +558,63 @@ export default function AdminPage() {
                         <th className="text-start py-2 px-3">{isAr ? 'الاسم' : 'Name'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'الإيميل' : 'Email'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'الهاتف' : 'Phone'}</th>
-                        <th className="text-start py-2 px-3">{isAr ? 'المدينة' : 'City'}</th>
+                        <th className="text-start py-2 px-3">{isAr ? 'الباقة' : 'Plan'}</th>
+                        <th className="text-start py-2 px-3">{isAr ? 'الحد' : 'Limit'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'إجراءات' : 'Actions'}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((u) => (
-                        <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      {filteredUsers.map((u) => {
+                        const userSub = allSubs.find(s => s.user_id === u.id)
+                        const isBlocked = userSub?.status === 'blocked'
+                        return (
+                        <tr key={u.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isBlocked ? 'bg-red-50' : ''}`}>
                           <td className="py-2 px-3">{u.full_name}</td>
-                          <td className="py-2 px-3" dir="ltr">{u.email || u.phone_number}</td>
+                          <td className="py-2 px-3" dir="ltr">{u.email || '—'}</td>
                           <td className="py-2 px-3" dir="ltr">{u.phone_number || '—'}</td>
-                          <td className="py-2 px-3">{u.city || '—'}</td>
                           <td className="py-2 px-3">
-                            <select
-                              onChange={(e) => { if (e.target.value) handleActivateUser(u.id, e.target.value); e.target.value = '' }}
-                              className="text-xs border border-gray-300 rounded px-2 py-1"
-                              defaultValue=""
-                            >
-                              <option value="" disabled>{isAr ? 'تفعيل' : 'Activate'}</option>
-                              <option value="starter">Starter</option>
-                              <option value="pro">Pro</option>
-                            </select>
+                            {isBlocked ? (
+                              <span className="badge bg-red-100 text-red-700">{isAr ? 'محظور' : 'Blocked'}</span>
+                            ) : (
+                              <span className="badge bg-blue-100 text-blue-700">{userSub?.plan || 'free'}</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3">
+                            {userSub?.custom_max_cvs || PLANS[userSub?.plan]?.maxCVs || 1}
+                          </td>
+                          <td className="py-2 px-3">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {!isBlocked && (
+                                <select
+                                  onChange={(e) => { if (e.target.value) handleActivateUser(u.id, e.target.value); e.target.value = '' }}
+                                  className="text-xs border border-gray-300 rounded px-1.5 py-1"
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>{isAr ? 'باقة' : 'Plan'}</option>
+                                  <option value="free">{isAr ? 'مجاني' : 'Free'}</option>
+                                  <option value="starter">Starter</option>
+                                  <option value="pro">Pro</option>
+                                </select>
+                              )}
+                              <input
+                                type="number"
+                                placeholder={isAr ? 'حد مخصص' : 'Custom limit'}
+                                className="text-xs border border-gray-300 rounded px-1.5 py-1 w-20"
+                                onKeyDown={(e) => { if (e.key === 'Enter' && e.target.value) handleSetCustomLimit(u.id, e.target.value) }}
+                              />
+                              {isBlocked ? (
+                                <button onClick={() => handleUnblockUser(u.id)} className="text-xs text-green-600 hover:text-green-800 px-1.5 py-1 rounded bg-green-50">
+                                  {isAr ? 'فك حظر' : 'Unblock'}
+                                </button>
+                              ) : (
+                                <button onClick={() => handleBlockUser(u.id)} className="text-xs text-red-600 hover:text-red-800 px-1.5 py-1 rounded bg-red-50">
+                                  {isAr ? 'حظر' : 'Block'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>
@@ -622,6 +691,7 @@ export default function AdminPage() {
                     <div>
                       <label className="label">{isAr ? 'الباقة' : 'Plan'}</label>
                       <select value={genPlan} onChange={(e) => setGenPlan(e.target.value)} className="input">
+                        <option value="free">{isAr ? 'مجاني' : 'Free'}</option>
                         <option value="starter">Starter (3 CVs)</option>
                         <option value="pro">Pro (5 CVs)</option>
                       </select>
@@ -629,6 +699,10 @@ export default function AdminPage() {
                     <div>
                       <label className="label">{isAr ? 'العدد' : 'Count'}</label>
                       <input type="number" min="1" max="50" value={genCount} onChange={(e) => setGenCount(e.target.value)} className="input w-20" />
+                    </div>
+                    <div>
+                      <label className="label">{isAr ? 'حد مخصص (اختياري)' : 'Custom limit (optional)'}</label>
+                      <input type="number" min="1" placeholder={isAr ? 'مثال: 10' : 'e.g. 10'} value={genCustomCVs} onChange={(e) => setGenCustomCVs(e.target.value)} className="input w-28" />
                     </div>
                     <button onClick={handleGenerateCodes} className="btn-primary">
                       <Ticket size={18} /> {isAr ? 'توليد' : 'Generate'}

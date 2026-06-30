@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { user, profile, isAdmin } = useAuthStore()
   const { cvs, loading, fetchCVs, createCV } = useCVStore()
-  const { subscription, fetchSubscription, getPlan, canCreateCV } = useSubscriptionStore()
+  const { subscription, fetchSubscription, getPlan, canCreateCV, isBlocked } = useSubscriptionStore()
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -58,6 +58,17 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Blocked user message */}
+      {isBlocked() && (
+        <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800 flex items-center gap-3">
+          <Lock size={20} className="flex-shrink-0" />
+          <div>
+            <p className="font-medium">{isAr ? 'تم حظر حسابك' : 'Your account has been blocked'}</p>
+            <p className="text-xs mt-1 text-red-600">{isAr ? 'يرجى التواصل مع الإدارة' : 'Please contact administration'}</p>
+          </div>
+        </div>
+      )}
+
       {/* Subscription Banner */}
       <div className={`card mb-6 ${isPaid ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200' : 'bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200'}`}>
         <div className="flex items-center justify-between flex-wrap gap-4">
