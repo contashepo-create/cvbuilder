@@ -54,9 +54,10 @@ export const useAuthStore = create((set, get) => ({
           .select('*')
           .eq('id', user.id)
           .single()
-        set({ user, profile, session, loading: false })
+        const admin = await isAdminEmail(user.email)
+        set({ user, profile, session, isAdmin: admin, loading: false })
       } else {
-        set({ user: null, profile: null, session: null, loading: false })
+        set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
       }
     } catch (error) {
       set({ error: error.message, loading: false })
@@ -172,9 +173,12 @@ export const useAuthStore = create((set, get) => ({
 
 // Listen to auth state changes (only in real mode)
 if (!DEMO_MODE) {
-  supabase.auth.onAuthStateChange(async (event) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {
-      useAuthStore.setState({ user: null, profile: null, session: null })
+      useAuthStore.setState({ user: null, profile: null, session: null, isAdmin: false })
+    } else if (event === 'SIGNED_IN' && session) {
+      const admin = await isAdminEmail(session.user.email)
+      useAuthStore.setState({ isAdmin: admin })
     }
   })
 }
