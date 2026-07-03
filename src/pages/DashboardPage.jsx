@@ -101,6 +101,11 @@ export default function DashboardPage() {
               <Crown size={18} /> {t('dashboard.upgrade')}
             </button>
           )}
+          {isPaid && (
+            <button onClick={() => navigate('/pricing')} className="btn-outline text-sm">
+              <Crown size={18} /> {isAr ? 'عرض الخطط' : 'View Plans'}
+            </button>
+          )}
         </div>
         {/* Usage progress bar for free plan */}
         {!isPaid && (

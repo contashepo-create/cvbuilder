@@ -2,8 +2,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useSubscriptionStore } from '../store/subscriptionStore'
+import { useAdStore } from '../store/adStore'
 import { PLANS } from '../constants/plans'
-import { Check, Crown, ArrowLeft, Zap, Ticket } from 'lucide-react'
+import { Check, Crown, ArrowLeft, Zap, Ticket, ExternalLink } from 'lucide-react'
+import { useEffect } from 'react'
 
 const PLAN_ICONS = {
   free: Zap,
@@ -16,8 +18,17 @@ export default function PricingPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const { subscription, getPlan } = useSubscriptionStore()
+  const { paymentMethods, fetchPaymentMethods, contactLinks, fetchContactLinks } = useAdStore()
   const isAr = i18n.language === 'ar'
   const currentPlan = subscription?.plan || 'free'
+
+  useEffect(() => {
+    fetchPaymentMethods()
+    fetchContactLinks()
+  }, [])
+
+  const activePaymentMethods = (paymentMethods || []).filter(m => m.is_active)
+  const activeContactLinks = (contactLinks || []).filter(l => l.is_active)
 
   const handleSelect = (planId) => {
     if (planId === 'free') return
@@ -119,8 +130,46 @@ export default function PricingPage() {
         })}
       </div>
 
+      {/* Payment methods */}
+      <div className="mt-8 card">
+        <h3 className="font-semibold mb-4 text-center">{isAr ? 'طرق الدفع المتاحة' : 'Available Payment Methods'}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {activePaymentMethods.map((method) => (
+            <div key={method.id} className="p-4 rounded-lg border border-gray-200 bg-gray-50 text-center">
+              <div className="text-3xl mb-2">{method.icon}</div>
+              <p className="font-medium text-sm">{isAr ? method.name_ar : method.name_en}</p>
+              <p className="text-sm font-mono text-primary-600 mt-1" dir="ltr">{method.number}</p>
+              {(method.details_ar || method.details_en) && (
+                <p className="text-xs text-gray-400 mt-1">{isAr ? method.details_ar : method.details_en}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Contact methods */}
+      <div className="mt-4 card">
+        <h3 className="font-semibold mb-4 text-center">{isAr ? 'تواصل معنا' : 'Contact Us'}</h3>
+        <div className="flex flex-wrap justify-center gap-3">
+          {activeContactLinks.map((link) => (
+            <a
+              key={link.id}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+              style={{ color: link.color }}
+            >
+              <span className="text-xl">{link.icon}</span>
+              <span className="text-sm font-medium">{isAr ? link.name_ar : link.name_en}</span>
+              <ExternalLink size={14} />
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* Activation code section */}
-      <div className="mt-8 md:mt-12 card text-center bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
+      <div className="mt-8 card text-center bg-gradient-to-r from-primary-50 to-blue-50 border-primary-200">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 text-primary-600 mb-3">
           <Ticket size={24} />
         </div>
