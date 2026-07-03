@@ -2,19 +2,34 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useUIStore } from '../../store/uiStore'
-import { LogOut, Menu, X, Globe, FileText, LayoutDashboard, FlaskConical, Shield } from 'lucide-react'
-import { useState } from 'react'
+import { LogOut, Menu, X, Globe, FileText, LayoutDashboard, Shield, Moon, Sun } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { DEMO_MODE } from '../../lib/supabase'
 import { ADMIN_SECRET_PATH } from '../../constants/plans'
 
 export default function Header() {
   const { t } = useTranslation()
-  const { user, signOut, isAdmin } = useAuthStore()
+  const { user, profile, signOut, isAdmin } = useAuthStore()
   const { language, toggleLanguage } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
+
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [dark])
+
+  const toggleDark = () => setDark(!dark)
+
+  const userName = profile?.full_name || user?.email?.split('@')[0] || ''
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+    <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 transition-colors">
       {DEMO_MODE && (
         <div className="bg-amber-500 text-white text-center text-xs py-1 px-4 flex items-center justify-center gap-1.5">
           <FlaskConical size={14} />
@@ -24,16 +39,26 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-600">
+          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary-600 dark:text-primary-400">
             <FileText size={28} />
             <span>CV Builder</span>
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-4">
+          <nav className="hidden md:flex items-center gap-3">
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleDark}
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title={dark ? 'Light mode' : 'Dark mode'}
+            >
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            {/* Language toggle */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <Globe size={18} />
               {language === 'ar' ? 'EN' : 'ع'}
@@ -41,6 +66,11 @@ export default function Header() {
 
             {user ? (
               <>
+                {/* Username */}
+                <span className="text-sm text-gray-600 dark:text-gray-400 font-medium hidden lg:inline">
+                  {userName}
+                </span>
+
                 {isAdmin && (
                   <Link
                     to={`/${ADMIN_SECRET_PATH}`}
@@ -74,7 +104,7 @@ export default function Header() {
           {/* Mobile toggle */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
           >
             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -83,13 +113,28 @@ export default function Header() {
         {/* Mobile Nav */}
         {mobileOpen && (
           <nav className="md:hidden flex flex-col gap-2 pb-4">
-            <button
-              onClick={toggleLanguage}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100"
-            >
-              <Globe size={18} />
-              {language === 'ar' ? 'English' : 'العربية'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleDark}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                {dark ? <><Sun size={18} /> Light</> : <><Moon size={18} /> Dark</>}
+              </button>
+              <button
+                onClick={toggleLanguage}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <Globe size={18} />
+                {language === 'ar' ? 'English' : 'العربية'}
+              </button>
+            </div>
+
+            {user && (
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium px-3 py-1">
+                👤 {userName}
+              </div>
+            )}
+
             {user ? (
               <>
                 {isAdmin && (
