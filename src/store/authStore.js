@@ -46,18 +46,39 @@ export const useAuthStore = create((set, get) => ({
     }
 
     try {
+      // Set a timeout — if Supabase doesn't respond in 10s, stop loading
+      const timeout = setTimeout(() => {
+        const state = get()
+        if (state.loading) {
+          set({ loading: false, error: 'Timeout' })
+        }
+      }, 10000)
+
       const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        const { data: { user } } = await supabase.auth.getUser()
-        const { data: profile } = await supabase
+
+      if (!session) {
+        clearTimeout(timeout)
+        set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
+        return
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+
+      // Fetch profile (with error handling)
+      let finalProfile = null
+      try {
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single()
 
-        // If profile doesn't exist, create it (trigger fallback)
-        let finalProfile = profile
-        if (!profile) {
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Profile fetch error:', profileError)
+        }
+
+        if (!profile && !profileError) {
+          // Create profile if missing
           const fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
           const { data: newProfile } = await supabase
             .from('profiles')
@@ -71,28 +92,33 @@ export const useAuthStore = create((set, get) => ({
             .select()
             .single()
           finalProfile = newProfile
+        } else {
+          finalProfile = profile
         }
-
-        // Update last_seen on page load
-        try {
-          await supabase.from('profiles')
-            .update({ last_seen: new Date().toISOString() })
-            .eq('id', user.id)
-        } catch {}
-
-        let admin = false
-        try {
-          admin = await isAdminEmail(user.email)
-        } catch (e) {
-          console.error('Admin check failed:', e)
-        }
-        set({ user, profile: finalProfile, session, isAdmin: admin, loading: false })
-      } else {
-        set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
+      } catch (e) {
+        console.error('Profile fetch failed:', e)
       }
+
+      // Update last_seen (non-blocking)
+      try {
+        await supabase.from('profiles')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('id', user.id)
+      } catch {}
+
+      // Check admin
+      let admin = false
+      try {
+        admin = await isAdminEmail(user.email)
+      } catch (e) {
+        console.error('Admin check failed:', e)
+      }
+
+      clearTimeout(timeout)
+      set({ user, profile: finalProfile, session, isAdmin: admin, loading: false })
     } catch (error) {
       console.error('Auth init error:', error)
-      set({ error: error.message, loading: false })
+      set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
     }
   },
 

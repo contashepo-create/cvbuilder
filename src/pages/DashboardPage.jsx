@@ -51,10 +51,12 @@ export default function DashboardPage() {
   const isPaid = subscription?.plan !== 'free'
   const hasFlaggedCV = cvs.some((cv) => cv.is_flagged)
 
-  if (loading) {
+  // Don't block on loading if we already have user data
+  if (loading && cvs.length === 0 && !subscription) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Spinner size={32} />
+        <p className="text-sm text-gray-400">{isAr ? 'جاري التحميل...' : 'Loading...'}</p>
       </div>
     )
   }
