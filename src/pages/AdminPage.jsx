@@ -1279,39 +1279,8 @@ function AdsTab({ isAr }) {
 
   return (
     <div className="space-y-4">
-      {/* Scrolling text settings */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">{isAr ? 'شريط النص المتحرك' : 'Scrolling Text'}</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="label">{isAr ? 'النص (عربي)' : 'Text (Arabic)'}</label>
-            <input type="text" defaultValue={settings?.scrolling_text_ar} onBlur={(e) => updateSetting('scrolling_text_ar', e.target.value)} className="input" maxLength={200} />
-          </div>
-          <div>
-            <label className="label">{isAr ? 'النص (إنجليزي)' : 'Text (English)'}</label>
-            <input type="text" defaultValue={settings?.scrolling_text_en} onBlur={(e) => updateSetting('scrolling_text_en', e.target.value)} className="input" maxLength={200} />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" defaultChecked={settings?.scrolling_enabled === 'true'} onChange={(e) => updateSetting('scrolling_enabled', e.target.checked ? 'true' : 'false')} />
-            {isAr ? 'تفعيل الشريط المتحرك' : 'Enable scrolling text'}
-          </label>
-        </div>
-      </div>
-
-      {/* Contact settings */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">{isAr ? 'روابط التواصل' : 'Contact Links'}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="label">{isAr ? 'رقم واتساب' : 'WhatsApp number'}</label>
-            <input type="text" defaultValue={settings?.whatsapp_number} onBlur={(e) => updateSetting('whatsapp_number', e.target.value)} className="input" placeholder="201234567890" dir="ltr" />
-          </div>
-          <div>
-            <label className="label">{isAr ? 'رابط تليجرام' : 'Telegram link'}</label>
-            <input type="text" defaultValue={settings?.telegram_contact} onBlur={(e) => updateSetting('telegram_contact', e.target.value)} className="input" dir="ltr" />
-          </div>
-        </div>
-      </div>
+      {/* Scrolling text settings — uses SettingsTab sub-components */}
+      <ScrollingTextSettings isAr={isAr} />
 
       {/* Ads list */}
       <div className="card">
@@ -1411,16 +1380,7 @@ function AdsTab({ isAr }) {
       </div>
 
       {/* Visitor count offset */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">{isAr ? 'عداد الزيارات' : 'Visitor Count'}</h3>
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <label className="label">{isAr ? 'رقم ابتدائي (للعرض)' : 'Starting number (display)'}</label>
-            <input type="number" defaultValue={settings?.visitor_count_offset} onBlur={(e) => updateSetting('visitor_count_offset', e.target.value)} className="input" />
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-2">{isAr ? 'يُضاف هذا الرقم للزيارات الفعلية لعرض عدد أكبر' : 'This number is added to actual visits to show a larger count'}</p>
-      </div>
+      <VisitorCountSettings isAr={isAr} />
     </div>
   )
 }
@@ -1738,30 +1698,153 @@ function SettingsTab({ isAr }) {
       </div>
 
       {/* Scrolling text settings */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">{isAr ? 'الشريط الإعلاني المتحرك' : 'Scrolling Text'}</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="label">{isAr ? 'النص (عربي)' : 'Text (Arabic)'}</label>
-            <input type="text" defaultValue={settings?.scrolling_text_ar} onBlur={(e) => updateSetting('scrolling_text_ar', e.target.value)} className="input" maxLength={200} />
-          </div>
-          <div>
-            <label className="label">{isAr ? 'النص (إنجليزي)' : 'Text (English)'}</label>
-            <input type="text" defaultValue={settings?.scrolling_text_en} onBlur={(e) => updateSetting('scrolling_text_en', e.target.value)} className="input" maxLength={200} />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" defaultChecked={settings?.scrolling_enabled === 'true'} onChange={(e) => updateSetting('scrolling_enabled', e.target.checked ? 'true' : 'false')} />
-            {isAr ? 'تفعيل' : 'Enable'}
-          </label>
-        </div>
-      </div>
+      <ScrollingTextSettings isAr={isAr} />
 
       {/* Visitor count offset */}
-      <div className="card">
-        <h3 className="font-semibold mb-3">{isAr ? 'عداد الزيارات' : 'Visitor Count'}</h3>
-        <label className="label">{isAr ? 'رقم ابتدائي' : 'Starting number'}</label>
-        <input type="number" defaultValue={settings?.visitor_count_offset} onBlur={(e) => updateSetting('visitor_count_offset', e.target.value)} className="input w-32" />
-        <p className="text-xs text-gray-400 mt-1">{isAr ? 'يُضاف للزيارات الفعلية' : 'Added to actual visits'}</p>
+      <VisitorCountSettings isAr={isAr} />
+    </div>
+  )
+}
+
+// ---- Scrolling Text Settings (with Save button) ----
+function ScrollingTextSettings({ isAr }) {
+  const { settings, fetchSettings, updateSetting } = useAdStore()
+  const [form, setForm] = useState({
+    scrolling_text_ar: '',
+    scrolling_text_en: '',
+    scrolling_enabled: true,
+  })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  useEffect(() => {
+    if (settings) {
+      setForm({
+        scrolling_text_ar: settings.scrolling_text_ar || '',
+        scrolling_text_en: settings.scrolling_text_en || '',
+        scrolling_enabled: settings.scrolling_enabled === 'true',
+      })
+    }
+  }, [settings])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateSetting('scrolling_text_ar', form.scrolling_text_ar)
+      await updateSetting('scrolling_text_en', form.scrolling_text_en)
+      await updateSetting('scrolling_enabled', form.scrolling_enabled ? 'true' : 'false')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3 className="font-semibold mb-3">{isAr ? 'الشريط الإعلاني المتحرك' : 'Scrolling Text'}</h3>
+      <div className="space-y-3">
+        <div>
+          <label className="label">{isAr ? 'النص (عربي)' : 'Text (Arabic)'}</label>
+          <input
+            type="text"
+            value={form.scrolling_text_ar}
+            onChange={(e) => setForm({ ...form, scrolling_text_ar: e.target.value })}
+            className="input"
+            maxLength={200}
+          />
+        </div>
+        <div>
+          <label className="label">{isAr ? 'النص (إنجليزي)' : 'Text (English)'}</label>
+          <input
+            type="text"
+            value={form.scrolling_text_en}
+            onChange={(e) => setForm({ ...form, scrolling_text_en: e.target.value })}
+            className="input"
+            maxLength={200}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.scrolling_enabled}
+            onChange={(e) => setForm({ ...form, scrolling_enabled: e.target.checked })}
+          />
+          {isAr ? 'تفعيل الشريط' : 'Enable scrolling'}
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary text-sm"
+          >
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {isAr ? 'حفظ' : 'Save'}
+          </button>
+          {saved && <span className="text-xs text-green-600">✓ {isAr ? 'تم الحفظ' : 'Saved'}</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Visitor Count Settings (with Save button) ----
+function VisitorCountSettings({ isAr }) {
+  const { settings, fetchSettings, updateSetting } = useAdStore()
+  const [offset, setOffset] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  useEffect(() => {
+    if (settings?.visitor_count_offset !== undefined) {
+      setOffset(settings.visitor_count_offset)
+    }
+  }, [settings])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateSetting('visitor_count_offset', offset)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3 className="font-semibold mb-3">{isAr ? 'عداد الزيارات' : 'Visitor Count'}</h3>
+      <label className="label">{isAr ? 'رقم ابتدائي (للعرض)' : 'Starting number (display)'}</label>
+      <input
+        type="number"
+        value={offset}
+        onChange={(e) => setOffset(e.target.value)}
+        className="input w-32"
+      />
+      <p className="text-xs text-gray-400 mt-1">{isAr ? 'يُضاف للزيارات الفعلية لعرض عدد أكبر' : 'Added to actual visits to show a larger count'}</p>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="btn-primary text-sm"
+        >
+          {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+          {isAr ? 'حفظ' : 'Save'}
+        </button>
+        {saved && <span className="text-xs text-green-600">✓ {isAr ? 'تم الحفظ' : 'Saved'}</span>}
       </div>
     </div>
   )
