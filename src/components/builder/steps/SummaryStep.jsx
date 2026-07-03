@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lightbulb, Plus, X, Sparkles, Loader2 } from 'lucide-react'
+import { Lightbulb, Plus, Sparkles, Loader2 } from 'lucide-react'
 import { matchProfession, getSuggestions } from '../../../constants/summarySuggestions'
 import { useAIStore } from '../../../store/aiStore'
 import { aiSuggestSummary, aiImproveSummary } from '../../../lib/aiService'
 
-export default function SummaryStep({ data, onChange, personalInfo, cvLanguage = "ar" }) {
-  const { t, i18n } = useTranslation()
-  const lang = i18n.language
+export default function SummaryStep({ data, onChange, personalInfo, cvLanguage = 'ar' }) {
+  const { t } = useTranslation()
+  // Use CV language, NOT UI language
+  const lang = cvLanguage || 'ar'
+  const isAr = lang === 'ar'
   const jobTitle = personalInfo?.jobTitle || ''
   const { isConfigured, features } = useAIStore()
 
@@ -22,8 +24,7 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
 
   const appendSuggestion = (text) => {
     const current = data?.trim() || ''
-    const separator = current ? (lang === 'ar' ? ' ' : ' ') : ''
-    onChange(current + separator + text)
+    onChange(current ? current + '\n' + text : text)
   }
 
   const replaceWithSuggestion = (text) => {
@@ -38,7 +39,7 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
       setAiSuggestions(suggestions)
     } catch (err) {
       setAiError(err.message === 'AI_NOT_CONFIGURED'
-        ? (lang === 'ar' ? 'يرجى إعداد الذكاء الاصطناعي أولاً من الإعدادات' : 'Please configure AI first in settings')
+        ? (isAr ? 'يرجى إعداد الذكاء الاصطناعي أولاً من الإعدادات' : 'Please configure AI first in settings')
         : err.message)
     } finally {
       setAiLoading(false)
@@ -54,7 +55,7 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
       onChange(improved.trim())
     } catch (err) {
       setAiError(err.message === 'AI_NOT_CONFIGURED'
-        ? (lang === 'ar' ? 'يرجى إعداد الذكاء الاصطناعي أولاً' : 'Please configure AI first')
+        ? (isAr ? 'يرجى إعداد الذكاء الاصطناعي أولاً' : 'Please configure AI first')
         : err.message)
     } finally {
       setAiLoading(false)
@@ -66,7 +67,7 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
       {/* Summary textarea */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="label mb-0">{t('builder.sections.summary')}</label>
+          <label className="label mb-0">{isAr ? 'الملخص المهني' : 'Professional Summary'}</label>
           {isConfigured() && features.improveContent && data?.trim() && (
             <button
               onClick={handleAIImprove}
@@ -74,7 +75,7 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
               className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700"
             >
               {aiLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              {lang === 'ar' ? 'تحسين بالذكاء الاصطناعي' : 'Improve with AI'}
+              {isAr ? 'تحسين بالذكاء الاصطناعي' : 'Improve with AI'}
             </button>
           )}
         </div>
@@ -83,11 +84,11 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
           onChange={(e) => onChange(e.target.value)}
           className="input min-h-[140px] resize-y"
           maxLength={1000}
-          placeholder={t('builder.fields.summary_placeholder')}
+          placeholder={isAr ? 'اكتب ملخصاً مهنياً مختصراً عنك...' : 'Write a brief professional summary about yourself...'}
         />
         <div className="flex justify-between mt-1.5 text-xs text-gray-500">
-          <span>{wordCount} {lang === 'ar' ? 'كلمة' : 'words'}</span>
-          <span>{lang === 'ar' ? '50-200 كلمة مثالي' : '50-200 words ideal'}</span>
+          <span>{wordCount} {isAr ? 'كلمة' : 'words'}</span>
+          <span>{isAr ? '50-200 كلمة مثالي' : '50-200 words ideal'}</span>
         </div>
       </div>
 
@@ -97,14 +98,14 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-purple-700 flex items-center gap-1.5">
               <Sparkles size={16} />
-              {lang === 'ar' ? 'اقتراحات الذكاء الاصطناعي' : 'AI Suggestions'}
+              {isAr ? 'اقتراحات الذكاء الاصطناعي' : 'AI Suggestions'}
             </h4>
             <button
               onClick={handleAISuggest}
               disabled={aiLoading}
               className="text-xs btn bg-purple-600 text-white hover:bg-purple-700 px-3 py-1"
             >
-              {aiLoading ? <Loader2 size={14} className="animate-spin" /> : t('builder.fields.add_item')}
+              {aiLoading ? <Loader2 size={14} className="animate-spin" /> : (isAr ? 'توليد' : 'Generate')}
             </button>
           </div>
           {aiError && <p className="text-xs text-red-500 mb-2">{aiError}</p>}
@@ -130,12 +131,10 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
           <h4 className="text-sm font-medium text-amber-700 flex items-center gap-1.5 mb-1">
             <Lightbulb size={16} />
-            {lang === 'ar' ? `اقتراحات لمهنة "${jobTitle}"` : `Suggestions for "${jobTitle}"`}
+            {isAr ? `اقتراحات لمهنة "${jobTitle}"` : `Suggestions for "${jobTitle}"`}
           </h4>
           <p className="text-xs text-amber-600 mb-3">
-            {lang === 'ar'
-              ? 'انقر على أي اقتراح لإضافته، أو انقر مع الاستمرار للاستبدال'
-              : 'Click any suggestion to add, or click to replace'}
+            {isAr ? 'انقر لإضافة — انقر يمين للاستبدال' : 'Click to add — right-click to replace'}
           </p>
           <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
             {dbSuggestions.map((suggestion, i) => (
@@ -155,7 +154,7 @@ export default function SummaryStep({ data, onChange, personalInfo, cvLanguage =
 
       {!profession && jobTitle?.trim() && (
         <p className="text-xs text-gray-400 text-center">
-          {lang === 'ar'
+          {isAr
             ? 'لا توجد اقتراحات محددة لهذه المهنة، جرّب استخدام الذكاء الاصطناعي'
             : 'No specific suggestions for this title, try AI suggestions'}
         </p>

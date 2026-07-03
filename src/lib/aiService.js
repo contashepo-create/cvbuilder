@@ -128,9 +128,9 @@ async function callCohere({ baseUrl, apiKey, model, systemPrompt, userPrompt, te
 
 export async function aiSuggestSummary(jobTitle, lang = 'en') {
   const isAr = lang === 'ar'
-  const system = `You are a professional CV writer. Respond in ${isAr ? 'Arabic' : 'English'} only. Provide 3 different professional summary options for a ${jobTitle}. Each summary should be 2-3 sentences. Return ONLY the summaries, one per line, prefixed with numbers (1. 2. 3.). No extra commentary.`
-  const user = `Write 3 professional CV summary options for a ${jobTitle}.`
-  const result = await callAI({ systemPrompt: system, userPrompt: user, temperature: 0.8, maxTokens: 800 })
+  const system = `You are a professional CV writer. Respond in ${isAr ? 'Arabic' : 'English'} ONLY. Generate 5 different professional summary options tailored to the profession "${jobTitle}". Each summary should be 2-3 sentences highlighting key strengths, experience level, and value proposition relevant to ${jobTitle}. Return ONLY the summaries, one per line, prefixed with numbers (1. 2. 3. 4. 5.). No extra commentary.`
+  const user = `Write 5 professional CV summary options for a ${jobTitle}. Make them specific to the profession, not generic.`
+  const result = await callAI({ systemPrompt: system, userPrompt: user, temperature: 0.8, maxTokens: 1200 })
   return result.split('\n').filter((l) => l.trim())
 }
 

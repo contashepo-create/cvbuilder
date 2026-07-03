@@ -18,7 +18,7 @@ export default function CreativeTemplate({ content }) {
               <span className="w-4 h-1 bg-purple-600 rounded-full" />
               {t('builder.sections.summary')}
             </h2>
-            <p className="text-sm text-gray-700 leading-relaxed ps-6">{summary}</p>
+            <p className="text-sm text-gray-700 leading-relaxed ps-6 whitespace-pre-line">{summary}</p>
           </section>
         )
       case 'experience':
