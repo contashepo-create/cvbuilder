@@ -189,43 +189,6 @@ export const useSubscriptionStore = create((set, get) => ({
     return subData
   },
 
-  // Admin: generate activation codes
-  generateActivationCodes: async (plan, count = 1) => {
-    if (DEMO_MODE) {
-      const codes = getDemoCodes()
-      const newCodes = []
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-
-      for (let i = 0; i < count; i++) {
-        let code = ''
-        for (let j = 0; j < 12; j++) {
-          code += chars[Math.floor(Math.random() * chars.length)]
-          if (j === 3 || j === 7) code += '-'
-        }
-        const newCode = {
-          id: crypto.randomUUID(),
-          code,
-          plan,
-          status: 'unused',
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString(),
-        }
-        codes.unshift(newCode)
-        newCodes.push(newCode)
-      }
-      setDemoCodes(codes)
-      return newCodes
-    }
-
-    const newCodes = []
-    for (let i = 0; i < count; i++) {
-      const { data, error } = await supabase.rpc('generate_activation_code', { plan_name: plan })
-      if (error) throw error
-      newCodes.push({ code: data, plan, status: 'unused' })
-    }
-    return newCodes
-  },
-
   // Admin: fetch all activation codes
   fetchActivationCodes: async () => {
     if (DEMO_MODE) {

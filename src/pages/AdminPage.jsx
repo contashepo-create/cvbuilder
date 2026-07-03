@@ -78,9 +78,11 @@ export default function AdminPage() {
     }
   }, [resendTimer])
 
-  // Generate 6-digit code
+  // Generate cryptographically secure 6-digit code
   const generate2FACode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString()
+    const arr = new Uint32Array(1)
+    crypto.getRandomValues(arr)
+    return (100000 + (arr[0] % 900000)).toString()
   }
 
   // Get device info for security context
@@ -206,7 +208,7 @@ export default function AdminPage() {
         ])
         setAllUsers(usersRes.data || [])
         setAllCVs(cvsRes.data || [])
-        setAllCodes(codesRes.data || codes)
+        setAllCodes(codesRes.data || [])
         setAllSubs(subsRes.data || [])
         await fetchAllPaymentRequests()
       }
@@ -1246,11 +1248,12 @@ function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSet
   const handleSave = async () => {
     setSaving(true)
     try {
-      await supabase.from('profiles').update({
+      const { error: profileError } = await supabase.from('profiles').update({
         full_name: editName,
         phone_number: editPhone,
         city: editCity,
       }).eq('id', u.id)
+      if (profileError) throw profileError
 
       if (customLimit) {
         await onSetCustomLimit(u.id, customLimit)
@@ -1560,10 +1563,10 @@ function MessagesTab({ isAr, allUsers = [] }) {
     fetchAllConversations, fetchConversationMessages,
     sendConversationMessage, closeConversation, reopenConversation,
     adminMessageUser, markMessagesRead,
+    conversationMessages,
   } = useAdStore()
   const [conversations, setConversations] = useState([])
   const [selectedConv, setSelectedConv] = useState(null)
-  const [messages, setMessages] = useState([])
   const [replyText, setReplyText] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -1585,9 +1588,7 @@ function MessagesTab({ isAr, allUsers = [] }) {
     setSelectedConv(conv)
     await fetchConversationMessages(conv.id)
     await markMessagesRead(conv.id, 'admin')
-    // Read messages from store after fetch
-    const store = useAdStore.getState()
-    setMessages(store.conversationMessages || [])
+    loadConversations()
   }
 
   const handleReply = async () => {
@@ -1597,7 +1598,6 @@ function MessagesTab({ isAr, allUsers = [] }) {
       await sendConversationMessage(selectedConv.id, replyText.trim(), 'admin')
       setReplyText('')
       await fetchConversationMessages(selectedConv.id)
-      setMessages(useAdStore.getState().conversationMessages || [])
       loadConversations()
     } catch (err) { alert(err.message) }
     finally { setSending(false) }
@@ -1713,7 +1713,7 @@ function MessagesTab({ isAr, allUsers = [] }) {
               </div>
 
               <div className="flex-1 overflow-y-auto space-y-3 mb-4" style={{ maxHeight: '400px' }}>
-                {messages.map(msg => (
+                {(conversationMessages || []).map(msg => (
                   <div key={msg.id} className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] p-3 rounded-lg ${
                       msg.sender_type === 'admin'

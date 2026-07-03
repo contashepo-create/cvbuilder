@@ -66,11 +66,6 @@ export const useCVStore = create((set, get) => ({
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
 
-    const { count: totalCreated } = await supabase
-      .from('cv_creation_log')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-
     // Check against subscription limit
     const maxCVs = useSubscriptionStore.getState().getMaxCVs()
 

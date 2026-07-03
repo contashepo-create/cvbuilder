@@ -10,7 +10,8 @@ import Spinner from '../components/ui/Spinner'
 import { ADMIN_SECRET_PATH } from '../constants/plans'
 
 export default function DashboardPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isAr = i18n.language === 'ar'
   const navigate = useNavigate()
   const { user, profile, isAdmin } = useAuthStore()
   const { cvs, loading, fetchCVs, createCV } = useCVStore()

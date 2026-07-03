@@ -160,8 +160,8 @@ export async function verifyAdminPassword(password) {
 
   if (!password) return { valid: false, error: 'Password required' }
 
-  const sanitized = sanitize(password)
-  const hash = await hashWithSalt(sanitized, PASS_SALT)
+  // Hash the RAW password (no sanitization — sanitizing breaks special chars)
+  const hash = await hashWithSalt(password, PASS_SALT)
 
   if (hash === ADMIN_PASS_HASH) {
     clearAttempts()

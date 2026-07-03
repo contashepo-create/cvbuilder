@@ -14,7 +14,7 @@ export async function exportToPDF(element, filename = 'CV.pdf', fitToOnePage = f
     return
   }
 
-  const safeFilename = escapeHTML(filename).replace(/[<>:"/\\|?*]/g, '_')
+  const safeFilename = filename.replace(/[<>:"/\\|?*]/g, '_')
 
   // Wait for fonts to load
   try {

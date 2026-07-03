@@ -268,8 +268,26 @@ if (!DEMO_MODE) {
     if (event === 'SIGNED_OUT') {
       useAuthStore.setState({ user: null, profile: null, session: null, isAdmin: false })
     } else if (event === 'SIGNED_IN' && session) {
-      const admin = await isAdminEmail(session.user.email)
-      useAuthStore.setState({ isAdmin: admin })
+      // Set user + session immediately
+      useAuthStore.setState({ user: session.user, session })
+      // Fetch profile
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+        // Update last_seen
+        await supabase.from('profiles')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('id', session.user.id)
+        // Check admin
+        let admin = false
+        try { admin = await isAdminEmail(session.user.email) } catch {}
+        useAuthStore.setState({ profile, isAdmin: admin })
+      } catch (e) {
+        console.error('Profile fetch on auth change failed:', e)
+      }
     }
   })
 }
