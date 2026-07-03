@@ -312,27 +312,30 @@ export const useAuthStore = create((set, get) => ({
 if (!DEMO_MODE) {
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_OUT') {
-      useAuthStore.setState({ user: null, profile: null, session: null, isAdmin: false })
+      useAuthStore.setState({ user: null, profile: null, session: null, isAdmin: false, loading: false })
     } else if (event === 'SIGNED_IN' && session) {
-      // Set user + session immediately
-      useAuthStore.setState({ user: session.user, session })
-      // Fetch profile
+      // Set user + session + stop loading immediately
+      useAuthStore.setState({ user: session.user, session, loading: false })
+      // Fetch profile in background
       try {
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
-        // Update last_seen
-        await supabase.from('profiles')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', session.user.id)
+        // Update last_seen (non-blocking)
+        try {
+          await supabase.from('profiles')
+            .update({ last_seen: new Date().toISOString() })
+            .eq('id', session.user.id)
+        } catch {}
         // Check admin
         let admin = false
         try { admin = await isAdminEmail(session.user.email) } catch {}
-        useAuthStore.setState({ profile, isAdmin: admin })
+        useAuthStore.setState({ profile, isAdmin: admin, loading: false })
       } catch (e) {
         console.error('Profile fetch on auth change failed:', e)
+        useAuthStore.setState({ loading: false })
       }
     }
   })
