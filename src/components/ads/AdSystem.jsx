@@ -53,8 +53,8 @@ export default function AdSystem() {
       {/* Scrolling text bar */}
       {scrollingText && (
         <div className="bg-primary-600 text-white py-1.5 overflow-hidden whitespace-nowrap">
-          <div className="inline-block animate-marquee">
-            {scrollingText} • {scrollingText} • {scrollingText}
+          <div className="inline-block animate-marquee whitespace-nowrap px-4">
+            {scrollingText}
           </div>
           <style>{`
             @keyframes marquee {
@@ -62,10 +62,11 @@ export default function AdSystem() {
               100% { transform: translateX(-100%) }
             }
             .animate-marquee {
-              animation: marquee 20s linear infinite
+              animation: marquee 25s linear infinite;
+              display: inline-block;
             }
             [dir="rtl"] .animate-marquee {
-              animation: marquee 20s linear infinite reverse
+              animation: marquee 25s linear infinite reverse;
             }
           `}</style>
         </div>
