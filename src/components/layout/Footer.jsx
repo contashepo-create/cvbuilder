@@ -21,7 +21,7 @@ export default function Footer() {
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
             <FileText size={20} className="text-primary-600" />
             <span className="font-medium">CV Builder</span>
-            <span className="text-sm text-gray-400">— {new Date().getFullYear()}</span>
+            <span className="text-sm text-gray-400">— © {new Date().getFullYear()} محمد عبدة</span>
           </div>
 
           {/* Contact icons — from database */}

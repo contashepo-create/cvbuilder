@@ -127,6 +127,18 @@ export const useAuthStore = create((set, get) => ({
       return { user }
     }
 
+    // Check if email already exists BEFORE calling signUp
+    const { data: existingUser } = await supabase
+      .from('profiles')
+      .select('email')
+      .ilike('email', email)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingUser) {
+      throw new Error('EMAIL_EXISTS')
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
