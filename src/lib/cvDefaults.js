@@ -1,7 +1,8 @@
 import { DEFAULT_SECTION_ORDER } from '../constants/sections'
 
-export function createEmptyCVContent() {
+export function createEmptyCVContent(language = 'ar') {
   return {
+    cvLanguage: language,
     personalInfo: {
       fullName: '',
       jobTitle: '',

@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const { cvs, loading, fetchCVs, createCV } = useCVStore()
   const { subscription, fetchSubscription, getPlan, canCreateCV, isBlocked } = useSubscriptionStore()
   const [creating, setCreating] = useState(false)
+  const [showLangPicker, setShowLangPicker] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -24,11 +25,12 @@ export default function DashboardPage() {
     }
   }, [user, fetchCVs, fetchSubscription])
 
-  const handleCreate = async () => {
+  const handleCreate = async (lang = 'ar') => {
     if (!canCreateCV(cvs.length)) return
     setCreating(true)
+    setShowLangPicker(false)
     try {
-      const cv = await createCV(user.id, 'My CV', profile)
+      const cv = await createCV(user.id, 'My CV', profile, lang)
       navigate(`/builder/${cv.id}`)
     } catch (err) {
       console.error(err)
@@ -139,14 +141,32 @@ export default function DashboardPage() {
               لوحة التحكم
             </button>
           )}
-          <button
-            onClick={handleCreate}
-            disabled={creating || limitReached}
-            className="btn-primary"
-            title={limitReached ? t('dashboard.limit_reached') : ''}
-          >
-            {creating ? <Spinner size={20} /> : <><Plus size={20} /> {t('dashboard.create_cv')}</>}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowLangPicker(!showLangPicker)}
+              disabled={creating || limitReached}
+              className="btn-primary"
+              title={limitReached ? t('dashboard.limit_reached') : ''}
+            >
+              {creating ? <Spinner size={20} /> : <><Plus size={20} /> {t('dashboard.create_cv')}</>}
+            </button>
+            {showLangPicker && (
+              <div className="absolute end-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 w-48">
+                <button
+                  onClick={() => handleCreate('ar')}
+                  className="w-full text-start px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <span className="text-lg">🇸🇦</span> سي في بالعربية
+                </button>
+                <button
+                  onClick={() => handleCreate('en')}
+                  className="w-full text-start px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <span className="text-lg">🇬🇧</span> CV in English
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -172,7 +192,7 @@ export default function DashboardPage() {
           </div>
           <h3 className="text-lg font-semibold text-gray-700 mb-2">{t('dashboard.no_cvs')}</h3>
           <p className="text-gray-500 mb-6">{t('dashboard.no_cvs_desc')}</p>
-          <button onClick={handleCreate} disabled={creating} className="btn-primary">
+          <button onClick={() => setShowLangPicker(true)} disabled={creating || limitReached} className="btn-primary">
             <Plus size={20} /> {t('dashboard.create_cv')}
           </button>
         </div>

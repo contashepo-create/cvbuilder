@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next'
 import { Mail, Phone, MapPin, Linkedin, Github, Globe } from 'lucide-react'
 import { sanitizeURL } from '../../../lib/validators'
+import { useCVHelpers } from './cvHelpers'
 
 export default function ModernTemplate({ content }) {
-  const { t, i18n } = useTranslation()
-  const isRTL = i18n.language === 'ar'
+  const { t, isRTL, formatDate } = useCVHelpers(content)
   const dir = isRTL ? 'rtl' : 'ltr'
   const { personalInfo, summary, experience, education, skills, languages, certifications, projects, sectionOrder } = content
 
@@ -14,12 +14,6 @@ export default function ModernTemplate({ content }) {
     { url: personalInfo?.links?.github, label: 'GitHub', Icon: Github },
     { url: personalInfo?.links?.website, label: personalInfo?.links?.website || 'Website', Icon: Globe },
   ].filter((l) => l.url?.trim())
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ''
-    const d = new Date(dateStr + '-01')
-    return d.toLocaleDateString(isRTL ? 'ar' : 'en', { year: 'numeric', month: 'short' })
-  }
 
   const renderSection = (sectionId) => {
     switch (sectionId) {

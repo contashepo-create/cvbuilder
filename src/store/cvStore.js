@@ -36,8 +36,8 @@ export const useCVStore = create((set, get) => ({
     }
   },
 
-  createCV: async (userId, title = 'My CV', profile = null) => {
-    const content = createEmptyCVContent()
+  createCV: async (userId, title = 'My CV', profile = null, language = 'ar') => {
+    const content = createEmptyCVContent(language)
     const fingerprint = generateFingerprint(content)
 
     const newCV = {

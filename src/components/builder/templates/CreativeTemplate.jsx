@@ -3,7 +3,7 @@ import { Mail, Phone, MapPin } from 'lucide-react'
 import { sanitizeURL } from '../../../lib/validators'
 
 export default function CreativeTemplate({ content }) {
-  const { t, isRTL, formatDate } = useCVHelpers()
+  const { t, isRTL, formatDate } = useCVHelpers(content)
   const dir = isRTL ? 'rtl' : 'ltr'
   const { personalInfo, summary, experience, education, skills, languages, certifications, projects, sectionOrder } = content
 
