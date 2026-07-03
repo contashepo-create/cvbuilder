@@ -973,7 +973,7 @@ export default function AdminPage() {
             {tab === 'ads' && <AdsTab isAr={isAr} />}
 
             {/* Messages */}
-            {tab === 'messages' && <MessagesTab isAr={isAr} />}
+            {tab === 'messages' && <MessagesTab isAr={isAr} allUsers={allUsers} />}
 
             {/* Visitors */}
             {tab === 'visitors' && <VisitorsTab isAr={isAr} />}
@@ -1555,7 +1555,7 @@ function AdsTab({ isAr }) {
 }
 
 // ---- Messages Tab (Full conversation system) ----
-function MessagesTab({ isAr }) {
+function MessagesTab({ isAr, allUsers = [] }) {
   const {
     fetchAllConversations, fetchConversationMessages,
     sendConversationMessage, closeConversation, reopenConversation,
@@ -1585,11 +1585,9 @@ function MessagesTab({ isAr }) {
     setSelectedConv(conv)
     await fetchConversationMessages(conv.id)
     await markMessagesRead(conv.id, 'admin')
-    // Refresh messages
-    const msgs = await useAdStore.getState()
-    // Re-read from store
+    // Read messages from store after fetch
     const store = useAdStore.getState()
-    setMessages(store.conversationMessages)
+    setMessages(store.conversationMessages || [])
   }
 
   const handleReply = async () => {
@@ -1599,7 +1597,7 @@ function MessagesTab({ isAr }) {
       await sendConversationMessage(selectedConv.id, replyText.trim(), 'admin')
       setReplyText('')
       await fetchConversationMessages(selectedConv.id)
-      setMessages(useAdStore.getState().conversationMessages)
+      setMessages(useAdStore.getState().conversationMessages || [])
       loadConversations()
     } catch (err) { alert(err.message) }
     finally { setSending(false) }
@@ -1646,7 +1644,9 @@ function MessagesTab({ isAr }) {
           <div className="space-y-2 mb-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
             <select value={newMsgUser} onChange={(e) => setNewMsgUser(e.target.value)} className="input">
               <option value="">{isAr ? 'اختر مستخدم...' : 'Select user...'}</option>
-              {/* allUsers is passed via props or fetched */}
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id}>{u.full_name || u.email || u.id.slice(0, 8)}</option>
+              ))}
             </select>
             <input type="text" value={newMsgSubject} onChange={(e) => setNewMsgSubject(e.target.value)} className="input" placeholder={isAr ? 'الموضوع' : 'Subject'} maxLength={200} />
             <textarea value={newMsgText} onChange={(e) => setNewMsgText(e.target.value)} className="input min-h-[80px]" placeholder={isAr ? 'الرسالة' : 'Message'} maxLength={2000} />
