@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
 import { usePaymentStore } from '../store/paymentStore'
-import { PLANS, PAYMENT_METHODS, TELEGRAM_CONTACT } from '../constants/plans'
+import { useAdStore } from '../store/adStore'
+import { PLANS } from '../constants/plans'
 import { ArrowLeft, Upload, Check, ExternalLink, Send, AlertCircle } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
 
@@ -13,7 +14,17 @@ export default function PaymentPage() {
   const navigate = useNavigate()
   const { user, profile } = useAuthStore()
   const { submitPaymentRequest } = usePaymentStore()
+  const { paymentMethods, fetchPaymentMethods, contactLinks, fetchContactLinks } = useAdStore()
   const isAr = i18n.language === 'ar'
+
+  useEffect(() => {
+    fetchPaymentMethods()
+    fetchContactLinks()
+  }, [])
+
+  const activePaymentMethods = paymentMethods.filter(m => m.is_active)
+  const activeContactLinks = contactLinks.filter(l => l.is_active)
+  const telegramLink = activeContactLinks.find(l => l.name_en?.toLowerCase().includes('telegram'))?.url || '#'
 
   const plan = PLANS[planId]
   const [step, setStep] = useState(1) // 1=info, 2=form, 3=success
@@ -112,7 +123,7 @@ export default function PaymentPage() {
           <div className="card">
             <h3 className="font-semibold mb-4">{isAr ? 'طرق الدفع' : 'Payment Methods'}</h3>
             <div className="space-y-4">
-              {PAYMENT_METHODS.map((method) => (
+              {activePaymentMethods.map((method) => (
                 <div key={method.id} className="p-4 rounded-lg border border-gray-200 bg-gray-50">
                   <div className="flex items-center gap-3 mb-1">
                     <span className="text-2xl">{method.icon}</span>
@@ -146,7 +157,7 @@ export default function PaymentPage() {
                   <li>{isAr ? 'سيتم مراجعة طلبك وتفعيل الباقة خلال 24 ساعة' : 'Your request will be reviewed and plan activated within 24 hours'}</li>
                 </ol>
                 <a
-                  href={TELEGRAM_CONTACT}
+                  href={telegramLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 mt-3 text-sm text-blue-600 hover:underline"
@@ -182,7 +193,7 @@ export default function PaymentPage() {
               onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
               className="input"
             >
-              {PAYMENT_METHODS.map((m) => (
+              {activePaymentMethods.map((m) => (
                 <option key={m.id} value={m.id}>{isAr ? m.name_ar : m.name_en}</option>
               ))}
             </select>

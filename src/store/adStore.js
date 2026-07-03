@@ -223,4 +223,65 @@ export const useAdStore = create((set, get) => ({
     const uniqueIPs = new Set(ipData?.map(v => v.ip_address).filter(Boolean)).size
     return { total: total || 0, today: todayCount || 0, uniqueIPs }
   },
+
+  // ---- Payment methods ----
+  paymentMethods: [],
+  fetchPaymentMethods: async () => {
+    if (DEMO_MODE) {
+      set({ paymentMethods: [
+        { id: '1', name_ar: 'أورانج كاش', name_en: 'Orange Cash', number: '01000000000', icon: '🟠', details_ar: '', details_en: '', is_active: true, sort_order: 1 },
+        { id: '2', name_ar: 'تحويل بنكي', name_en: 'Bank Transfer', number: 'ACC-123456789', icon: '🏦', details_ar: 'بنك مصر', details_en: 'Banque Misr', is_active: true, sort_order: 2 },
+        { id: '3', name_ar: 'إنستا باي', name_en: 'InstaPay', number: 'instapay@handle', icon: '⚡', details_ar: '', details_en: '', is_active: true, sort_order: 3 },
+      ]})
+      return
+    }
+    const { data } = await supabase.from('payment_methods').select('*').order('sort_order', { ascending: true })
+    set({ paymentMethods: data || [] })
+  },
+  createPaymentMethod: async (method) => {
+    if (DEMO_MODE) return
+    const { error } = await supabase.from('payment_methods').insert(method)
+    if (error) throw error
+    await get().fetchPaymentMethods()
+  },
+  updatePaymentMethod: async (id, updates) => {
+    if (DEMO_MODE) return
+    await supabase.from('payment_methods').update(updates).eq('id', id)
+    await get().fetchPaymentMethods()
+  },
+  deletePaymentMethod: async (id) => {
+    if (DEMO_MODE) return
+    await supabase.from('payment_methods').delete().eq('id', id)
+    await get().fetchPaymentMethods()
+  },
+
+  // ---- Contact links ----
+  contactLinks: [],
+  fetchContactLinks: async () => {
+    if (DEMO_MODE) {
+      set({ contactLinks: [
+        { id: '1', name_ar: 'واتساب', name_en: 'WhatsApp', url: 'https://wa.me/201234567890', icon: '💬', color: '#25D366', is_active: true, sort_order: 1 },
+        { id: '2', name_ar: 'تليجرام', name_en: 'Telegram', url: 'https://t.me/your_username', icon: '✈️', color: '#0088cc', is_active: true, sort_order: 2 },
+      ]})
+      return
+    }
+    const { data } = await supabase.from('contact_links').select('*').order('sort_order', { ascending: true })
+    set({ contactLinks: data || [] })
+  },
+  createContactLink: async (link) => {
+    if (DEMO_MODE) return
+    const { error } = await supabase.from('contact_links').insert(link)
+    if (error) throw error
+    await get().fetchContactLinks()
+  },
+  updateContactLink: async (id, updates) => {
+    if (DEMO_MODE) return
+    await supabase.from('contact_links').update(updates).eq('id', id)
+    await get().fetchContactLinks()
+  },
+  deleteContactLink: async (id) => {
+    if (DEMO_MODE) return
+    await supabase.from('contact_links').delete().eq('id', id)
+    await get().fetchContactLinks()
+  },
 }))

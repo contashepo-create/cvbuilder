@@ -556,6 +556,7 @@ export default function AdminPage() {
     { id: 'ads', label: isAr ? 'الإعلانات' : 'Ads', icon: Megaphone },
     { id: 'messages', label: isAr ? 'الرسائل' : 'Messages', icon: Mail },
     { id: 'visitors', label: isAr ? 'الزوار' : 'Visitors', icon: Eye },
+    { id: 'settings', label: isAr ? 'الإعدادات' : 'Settings', icon: SettingsIcon },
   ]
 
   return (
@@ -940,6 +941,9 @@ export default function AdminPage() {
 
             {/* Visitors */}
             {tab === 'visitors' && <VisitorsTab isAr={isAr} />}
+
+            {/* Settings */}
+            {tab === 'settings' && <SettingsTab isAr={isAr} />}
           </>
         )}
 
@@ -1516,6 +1520,248 @@ function VisitorsTab({ isAr }) {
       <div className="card text-center">
         <div className="text-2xl font-bold text-purple-600">{stats.uniqueIPs.toLocaleString()}</div>
         <div className="text-sm text-gray-500">{isAr ? 'IP فريدة' : 'Unique IPs'}</div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Settings Tab (Payment methods + Contact links) ----
+function SettingsTab({ isAr }) {
+  const {
+    paymentMethods, fetchPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod,
+    contactLinks, fetchContactLinks, createContactLink, updateContactLink, deleteContactLink,
+    settings, fetchSettings, updateSetting,
+  } = useAdStore()
+
+  const [showPayForm, setShowPayForm] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [editingPay, setEditingPay] = useState(null)
+  const [editingContact, setEditingContact] = useState(null)
+
+  const [payForm, setPayForm] = useState({ name_ar: '', name_en: '', number: '', icon: '💰', details_ar: '', details_en: '', is_active: true, sort_order: 0 })
+  const [contactForm, setContactForm] = useState({ name_ar: '', name_en: '', url: '', icon: '💬', color: '#2563eb', is_active: true, sort_order: 0 })
+
+  useEffect(() => {
+    fetchPaymentMethods()
+    fetchContactLinks()
+    fetchSettings()
+  }, [])
+
+  // ---- Payment methods handlers ----
+  const handlePaySubmit = async (e) => {
+    e.preventDefault()
+    try {
+      if (editingPay) {
+        await updatePaymentMethod(editingPay.id, payForm)
+      } else {
+        await createPaymentMethod(payForm)
+      }
+      resetPayForm()
+    } catch (err) { alert(err.message) }
+  }
+
+  const handleEditPay = (m) => {
+    setEditingPay(m)
+    setPayForm(m)
+    setShowPayForm(true)
+  }
+
+  const resetPayForm = () => {
+    setShowPayForm(false)
+    setEditingPay(null)
+    setPayForm({ name_ar: '', name_en: '', number: '', icon: '💰', details_ar: '', details_en: '', is_active: true, sort_order: 0 })
+  }
+
+  // ---- Contact links handlers ----
+  const handleContactSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      if (editingContact) {
+        await updateContactLink(editingContact.id, contactForm)
+      } else {
+        await createContactLink(contactForm)
+      }
+      resetContactForm()
+    } catch (err) { alert(err.message) }
+  }
+
+  const handleEditContact = (l) => {
+    setEditingContact(l)
+    setContactForm(l)
+    setShowContactForm(true)
+  }
+
+  const resetContactForm = () => {
+    setShowContactForm(false)
+    setEditingContact(null)
+    setContactForm({ name_ar: '', name_en: '', url: '', icon: '💬', color: '#2563eb', is_active: true, sort_order: 0 })
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Payment Methods */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">{isAr ? 'وسائل الدفع' : 'Payment Methods'}</h3>
+          <button onClick={() => { setShowPayForm(!showPayForm); if (!showPayForm) resetPayForm() }} className="btn-primary text-sm">
+            + {isAr ? 'إضافة وسيلة' : 'Add method'}
+          </button>
+        </div>
+
+        {showPayForm && (
+          <form onSubmit={handlePaySubmit} className="mb-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label">{isAr ? 'الاسم (عربي)' : 'Name (Arabic)'}</label>
+                <input type="text" value={payForm.name_ar} onChange={(e) => setPayForm({ ...payForm, name_ar: e.target.value })} className="input" maxLength={50} required />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'الاسم (إنجليزي)' : 'Name (English)'}</label>
+                <input type="text" value={payForm.name_en} onChange={(e) => setPayForm({ ...payForm, name_en: e.target.value })} className="input" maxLength={50} required />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'الرقم/الحساب' : 'Number/Account'}</label>
+                <input type="text" value={payForm.number} onChange={(e) => setPayForm({ ...payForm, number: e.target.value })} className="input" dir="ltr" maxLength={100} required />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'أيقونة (إيموجي)' : 'Icon (emoji)'}</label>
+                <input type="text" value={payForm.icon} onChange={(e) => setPayForm({ ...payForm, icon: e.target.value })} className="input" maxLength={10} />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'تفاصيل (عربي)' : 'Details (Arabic)'}</label>
+                <input type="text" value={payForm.details_ar} onChange={(e) => setPayForm({ ...payForm, details_ar: e.target.value })} className="input" maxLength={200} />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'تفاصيل (إنجليزي)' : 'Details (English)'}</label>
+                <input type="text" value={payForm.details_en} onChange={(e) => setPayForm({ ...payForm, details_en: e.target.value })} className="input" maxLength={200} />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'ترتيب' : 'Sort order'}</label>
+                <input type="number" value={payForm.sort_order} onChange={(e) => setPayForm({ ...payForm, sort_order: parseInt(e.target.value) || 0 })} className="input w-20" />
+              </div>
+              <label className="flex items-center gap-2 text-sm mt-6">
+                <input type="checkbox" checked={payForm.is_active} onChange={(e) => setPayForm({ ...payForm, is_active: e.target.checked })} />
+                {isAr ? 'مفعّل' : 'Active'}
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="btn-primary text-sm">{isAr ? 'حفظ' : 'Save'}</button>
+              <button type="button" onClick={resetPayForm} className="btn-secondary text-sm">{isAr ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </form>
+        )}
+
+        <div className="space-y-2">
+          {paymentMethods.map((m) => (
+            <div key={m.id} className={`flex items-center gap-3 p-3 rounded-lg border ${m.is_active ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-gray-50'}`}>
+              <span className="text-2xl">{m.icon}</span>
+              <div className="flex-1">
+                <p className="font-medium text-sm">{isAr ? m.name_ar : m.name_en}</p>
+                <p className="text-xs text-gray-500 font-mono" dir="ltr">{m.number}</p>
+                {(m.details_ar || m.details_en) && <p className="text-xs text-gray-400">{isAr ? m.details_ar : m.details_en}</p>}
+              </div>
+              <div className="flex items-center gap-1">
+                <span className={`badge ${m.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{m.is_active ? '✓' : '✗'}</span>
+                <button onClick={() => handleEditPay(m)} className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">{isAr ? 'تعديل' : 'Edit'}</button>
+                <button onClick={() => { if (confirm(isAr ? 'حذف؟' : 'Delete?')) deletePaymentMethod(m.id) }} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100"><Trash2 size={12} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Contact Links */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">{isAr ? 'روابط التواصل' : 'Contact Links'}</h3>
+          <button onClick={() => { setShowContactForm(!showContactForm); if (!showContactForm) resetContactForm() }} className="btn-primary text-sm">
+            + {isAr ? 'إضافة رابط' : 'Add link'}
+          </button>
+        </div>
+
+        {showContactForm && (
+          <form onSubmit={handleContactSubmit} className="mb-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label">{isAr ? 'الاسم (عربي)' : 'Name (Arabic)'}</label>
+                <input type="text" value={contactForm.name_ar} onChange={(e) => setContactForm({ ...contactForm, name_ar: e.target.value })} className="input" maxLength={50} required />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'الاسم (إنجليزي)' : 'Name (English)'}</label>
+                <input type="text" value={contactForm.name_en} onChange={(e) => setContactForm({ ...contactForm, name_en: e.target.value })} className="input" maxLength={50} required />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">{isAr ? 'الرابط' : 'URL'}</label>
+                <input type="url" value={contactForm.url} onChange={(e) => setContactForm({ ...contactForm, url: e.target.value })} className="input" dir="ltr" maxLength={300} required />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'أيقونة (إيموجي)' : 'Icon (emoji)'}</label>
+                <input type="text" value={contactForm.icon} onChange={(e) => setContactForm({ ...contactForm, icon: e.target.value })} className="input" maxLength={10} />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'اللون' : 'Color'}</label>
+                <input type="color" value={contactForm.color} onChange={(e) => setContactForm({ ...contactForm, color: e.target.value })} className="input h-10" />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'ترتيب' : 'Sort order'}</label>
+                <input type="number" value={contactForm.sort_order} onChange={(e) => setContactForm({ ...contactForm, sort_order: parseInt(e.target.value) || 0 })} className="input w-20" />
+              </div>
+              <label className="flex items-center gap-2 text-sm mt-6">
+                <input type="checkbox" checked={contactForm.is_active} onChange={(e) => setContactForm({ ...contactForm, is_active: e.target.checked })} />
+                {isAr ? 'مفعّل' : 'Active'}
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="btn-primary text-sm">{isAr ? 'حفظ' : 'Save'}</button>
+              <button type="button" onClick={resetContactForm} className="btn-secondary text-sm">{isAr ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </form>
+        )}
+
+        <div className="space-y-2">
+          {contactLinks.map((l) => (
+            <div key={l.id} className={`flex items-center gap-3 p-3 rounded-lg border ${l.is_active ? 'border-green-200 bg-green-50/30' : 'border-gray-200 bg-gray-50'}`}>
+              <span className="text-2xl">{l.icon}</span>
+              <div className="flex-1">
+                <p className="font-medium text-sm">{isAr ? l.name_ar : l.name_en}</p>
+                <p className="text-xs text-gray-500" dir="ltr">{l.url}</p>
+              </div>
+              <span className="w-4 h-4 rounded-full" style={{ backgroundColor: l.color }}></span>
+              <div className="flex items-center gap-1">
+                <span className={`badge ${l.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{l.is_active ? '✓' : '✗'}</span>
+                <button onClick={() => handleEditContact(l)} className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">{isAr ? 'تعديل' : 'Edit'}</button>
+                <button onClick={() => { if (confirm(isAr ? 'حذف؟' : 'Delete?')) deleteContactLink(l.id) }} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100"><Trash2 size={12} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Scrolling text settings */}
+      <div className="card">
+        <h3 className="font-semibold mb-3">{isAr ? 'الشريط الإعلاني المتحرك' : 'Scrolling Text'}</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="label">{isAr ? 'النص (عربي)' : 'Text (Arabic)'}</label>
+            <input type="text" defaultValue={settings?.scrolling_text_ar} onBlur={(e) => updateSetting('scrolling_text_ar', e.target.value)} className="input" maxLength={200} />
+          </div>
+          <div>
+            <label className="label">{isAr ? 'النص (إنجليزي)' : 'Text (English)'}</label>
+            <input type="text" defaultValue={settings?.scrolling_text_en} onBlur={(e) => updateSetting('scrolling_text_en', e.target.value)} className="input" maxLength={200} />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" defaultChecked={settings?.scrolling_enabled === 'true'} onChange={(e) => updateSetting('scrolling_enabled', e.target.checked ? 'true' : 'false')} />
+            {isAr ? 'تفعيل' : 'Enable'}
+          </label>
+        </div>
+      </div>
+
+      {/* Visitor count offset */}
+      <div className="card">
+        <h3 className="font-semibold mb-3">{isAr ? 'عداد الزيارات' : 'Visitor Count'}</h3>
+        <label className="label">{isAr ? 'رقم ابتدائي' : 'Starting number'}</label>
+        <input type="number" defaultValue={settings?.visitor_count_offset} onBlur={(e) => updateSetting('visitor_count_offset', e.target.value)} className="input w-32" />
+        <p className="text-xs text-gray-400 mt-1">{isAr ? 'يُضاف للزيارات الفعلية' : 'Added to actual visits'}</p>
       </div>
     </div>
   )
