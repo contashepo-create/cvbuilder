@@ -4,8 +4,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { Mail, Lock, AlertCircle, CheckCircle2, FlaskConical } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
+import Captcha from '../components/ui/Captcha'
 import { DEMO_MODE } from '../lib/supabase'
 import { isValidEmail } from '../lib/validators'
+import { sendSecurityAlert, getVisitorIP, getDeviceInfo } from '../lib/telegramBot'
 
 export default function LoginPage() {
   const { t } = useTranslation()
@@ -18,6 +20,8 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [showVerifyMsg, setShowVerifyMsg] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const [failedAttempts, setFailedAttempts] = useState(0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -33,16 +37,51 @@ export default function LoginPage() {
       return
     }
 
+    // Require captcha after first failed attempt
+    if (failedAttempts >= 1 && !captchaToken) {
+      setError(t('auth.captcha_required') || 'يرجى إكمال التحقق الأمني')
+      return
+    }
+
     setShowVerifyMsg(false)
     setLoading(true)
     try {
       await signIn({ email, password })
       navigate('/dashboard')
     } catch (err) {
+      const newCount = failedAttempts + 1
+      setFailedAttempts(newCount)
+
+      // Send security alert on 3+ failed attempts
+      if (newCount >= 3) {
+        const ip = await getVisitorIP()
+        const device = getDeviceInfo()
+        sendSecurityAlert({
+          type: 'multiple_attempts',
+          email,
+          ip,
+          userAgent: device,
+          attempts: newCount,
+          details: 'Multiple failed login attempts',
+        })
+      }
+
       if (err.message === 'EMAIL_NOT_VERIFIED') {
         setShowVerifyMsg(true)
       } else {
         setError(err.message)
+        // Send alert on individual failed login
+        if (newCount === 1) {
+          const ip = await getVisitorIP()
+          const device = getDeviceInfo()
+          sendSecurityAlert({
+            type: 'failed_login',
+            email,
+            ip,
+            userAgent: device,
+            details: err.message,
+          })
+        }
       }
     } finally {
       setLoading(false)
@@ -104,6 +143,11 @@ export default function LoginPage() {
               </div>
               {fieldErrors.password && <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>}
             </div>
+
+            {/* Captcha — shows after first failed attempt */}
+            {failedAttempts >= 1 && (
+              <Captcha onVerify={setCaptchaToken} />
+            )}
 
             <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? <Spinner size={20} /> : t('auth.login_btn')}

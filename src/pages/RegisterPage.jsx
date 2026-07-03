@@ -4,15 +4,18 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { Mail, Lock, User, Phone, MapPin, AlertCircle, AlertTriangle } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
+import Captcha from '../components/ui/Captcha'
 import { isValidEmail, isValidPhone } from '../lib/validators'
 import { checkDeviceFingerprintLocal, registerDeviceFingerprintLocal } from '../lib/deviceFingerprint'
 import { DEMO_MODE } from '../lib/supabase'
+import { sendSecurityAlert, getVisitorIP, getDeviceInfo } from '../lib/telegramBot'
 
 export default function RegisterPage() {
   const { t, i18n } = useTranslation()
   const isAr = i18n.language === 'ar'
   const navigate = useNavigate()
   const { signUp } = useAuthStore()
+  const [captchaToken, setCaptchaToken] = useState(null)
 
   const [form, setForm] = useState({
     email: '',
@@ -51,6 +54,13 @@ export default function RegisterPage() {
     setApiError('')
     if (!validate()) return
     setLoading(true)
+
+    // Verify captcha
+    if (!captchaToken) {
+      setApiError(isAr ? 'يرجى إكمال التحقق الأمني' : 'Please complete the security check')
+      setLoading(false)
+      return
+    }
 
     // Device fingerprint check (anti multi-account abuse)
     if (DEMO_MODE) {
@@ -209,6 +219,9 @@ export default function RegisterPage() {
               </div>
               {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
             </div>
+
+            {/* Captcha */}
+            <Captcha onVerify={setCaptchaToken} />
 
             <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? <Spinner size={20} /> : t('auth.register_btn')}

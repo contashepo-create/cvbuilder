@@ -120,3 +120,72 @@ export async function sendTelegramPhoto(base64Photo, caption) {
     return false
   }
 }
+
+/**
+ * Send security alert to admin's Telegram
+ * @param {Object} data - Security alert data
+ * @param {string} data.type - Alert type: 'failed_login' | 'multiple_attempts' | 'suspicious_activity' | 'blocked_access'
+ * @param {string} data.email - Email used (if any)
+ * @param {string} data.ip - IP address (if available)
+ * @param {string} data.userAgent - Browser/device info
+ * @param {string} data.details - Additional details
+ * @param {number} data.attempts - Number of attempts (if applicable)
+ */
+export async function sendSecurityAlert(data) {
+  const alertEmojis = {
+    failed_login: '🚫',
+    multiple_attempts: '⚠️',
+    suspicious_activity: '🔍',
+    blocked_access: '🔒',
+    admin_2fa: '🔐',
+  }
+
+  const emoji = alertEmojis[data.type] || '⚠️'
+  const typeLabels = {
+    failed_login: 'محاولة دخول فاشلة',
+    multiple_attempts: 'محاولات متعددة',
+    suspicious_activity: 'نشاط مشبوه',
+    blocked_access: 'محاولة وصول محظورة',
+    admin_2fa: 'رمز تأكيد الدخول — لوحة الإدارة',
+  }
+
+  const message = `
+${emoji} <b>تنبيه أمني</b>
+
+📋 <b>النوع:</b> ${typeLabels[data.type] || data.type}
+${data.email ? `📧 <b>الإيميل:</b> ${data.email}` : ''}
+${data.ip ? `🌐 <b>IP:</b> <code>${data.ip}</code>` : ''}
+📱 <b>الجهاز:</b> ${data.userAgent || 'Unknown'}
+${data.attempts ? `🔢 <b>المحاولات:</b> ${data.attempts}` : ''}
+${data.details ? `📝 <b>التفاصيل:</b> ${data.details}` : ''}
+🕐 <b>الوقت:</b> ${new Date().toLocaleString('ar')}
+  `.trim()
+
+  return sendTelegramMessage(message)
+}
+
+/**
+ * Get visitor's IP address (using a free service)
+ * @returns {Promise<string>}
+ */
+export async function getVisitorIP() {
+  try {
+    const res = await fetch('https://api.ipify.org?format=json')
+    const data = await res.json()
+    return data.ip || 'Unknown'
+  } catch {
+    return 'Unknown'
+  }
+}
+
+/**
+ * Get device/browser info
+ * @returns {string}
+ */
+export function getDeviceInfo() {
+  const nav = navigator
+  const browser = nav.userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)\/[\d.]+/)?.[0] || 'Unknown'
+  const os = nav.userAgent.match(/(Windows|Mac|Linux|Android|iOS|iPhone|iPad)/)?.[0] || 'Unknown'
+  const lang = nav.language || 'Unknown'
+  return `${browser} (${os}) — ${lang}`
+}
