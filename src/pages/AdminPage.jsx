@@ -884,6 +884,18 @@ export default function AdminPage() {
                                     <Copy size={12} /> {isAr ? 'نسخ' : 'Copy'}
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => {
+                                    if (confirm(isAr ? `حذف الكود "${c.code}"؟` : `Delete code "${c.code}"?`)) {
+                                      supabase.from('activation_codes').delete().eq('id', c.id)
+                                        .then(() => { loadAllData(); alert(isAr ? 'تم حذف الكود' : 'Code deleted') })
+                                    }
+                                  }}
+                                  className="btn bg-red-50 text-red-600 hover:bg-red-100 text-xs px-2 py-1 ml-1"
+                                  title={isAr ? 'حذف الكود' : 'Delete code'}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </td>
                             </tr>
                           )

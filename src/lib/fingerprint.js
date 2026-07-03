@@ -1,27 +1,23 @@
 /**
  * Anti-cheat fingerprinting system
- * Generates a fingerprint from CV personal info to detect
- * when a user creates a CV for person A then edits it to person B
- * to bypass the 2-CV limit.
+ * Only flags CVs when the PERSON changes after creation —
+ * NOT when a user legitimately creates multiple CVs for themselves.
+ *
+ * Key fix: The fingerprint is only compared after the FIRST save
+ * with actual personal info. Empty fingerprints don't trigger flags.
  */
 
-/**
- * Normalize text for comparison: lowercase, trim, remove spaces/diacritics
- */
 function normalize(text) {
   if (!text || typeof text !== 'string') return ''
   return text
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '')
-    .replace(/[\u064B-\u065F\u0670]/g, '') // Remove Arabic diacritics
+    .replace(/[\u064B-\u065F\u0670]/g, '')
 }
 
 /**
  * Generate a fingerprint from CV personal info
- * Uses name + email + phone to identify the "person" the CV is for
- * @param {Object} content - CV content
- * @returns {string} fingerprint hash
  */
 export function generateFingerprint(content) {
   const pi = content?.personalInfo || {}
@@ -29,7 +25,6 @@ export function generateFingerprint(content) {
   const email = normalize(pi.email)
   const phone = normalize(pi.phone)
 
-  // Simple hash function (not crypto-secure, but sufficient for comparison)
   const combined = `${name}|${email}|${phone}`
   let hash = 0
   for (let i = 0; i < combined.length; i++) {
@@ -41,35 +36,37 @@ export function generateFingerprint(content) {
 }
 
 /**
- * Compare two fingerprints and determine if the CV has been
- * swapped to a different person
- * @param {string} original - fingerprint at creation time
- * @param {string} current - fingerprint at save time
- * @returns {{ isDifferent: boolean, confidence: number }}
+ * Compare fingerprints — ONLY flag if BOTH have real data and differ
+ * This prevents false positives when:
+ * - User creates CV (empty) → fills info (first save) → should NOT flag
+ * - User creates multiple CVs for themselves → should NOT flag
+ * - User creates CV for person A → edits to person B → SHOULD flag
  */
 export function compareFingerprints(original, current) {
   if (!original || !current) return { isDifferent: false, confidence: 0 }
 
-  // Parse fingerprints: "hash_length"
   const [origHash, origLen] = original.split('_')
   const [currHash, currLen] = current.split('_')
 
-  // If both are essentially empty (new CV, not yet filled), don't flag
-  if (parseInt(origLen) === 0 && parseInt(currLen) === 0) {
+  const origHasData = parseInt(origLen) > 0
+  const currHasData = parseInt(currLen) > 0
+
+  // Both empty — new CV, nothing to compare
+  if (!origHasData && !currHasData) {
     return { isDifferent: false, confidence: 0 }
   }
 
-  // If original was empty but now has data — could be first edit, don't flag
-  if (parseInt(origLen) === 0) {
+  // Original empty, current has data — FIRST save with info, don't flag
+  if (!origHasData && currHasData) {
     return { isDifferent: false, confidence: 0 }
   }
 
-  // If current is empty but had data — user cleared it, suspicious but not definitive
-  if (parseInt(currLen) === 0) {
+  // Current empty but had data — user cleared it, suspicious
+  if (origHasData && !currHasData) {
     return { isDifferent: true, confidence: 0.5 }
   }
 
-  // Different hash = different person
+  // Both have data — compare
   if (origHash !== currHash) {
     return { isDifferent: true, confidence: 1.0 }
   }
@@ -78,31 +75,13 @@ export function compareFingerprints(original, current) {
 }
 
 /**
- * Check if CV content represents a different person than the profile owner
- * @param {Object} cvContent - The CV content
- * @param {Object} profile - The user's profile
- * @returns {boolean} true if CV appears to be for a different person
+ * Check if CV belongs to a different person than the account owner
+ * IMPORTANT: This is now DISABLED by default — it causes false positives
+ * because users legitimately put different emails/phones in their CVs
+ * than their account email. The fingerprint comparison above is sufficient.
  */
 export function isDifferentPerson(cvContent, profile) {
-  if (!cvContent?.personalInfo || !profile) return false
-
-  const cvName = normalize(cvContent.personalInfo.fullName)
-  const profileName = normalize(profile.full_name || profile.fullName)
-
-  // If CV name is empty, can't determine
-  if (!cvName) return false
-
-  // If names are completely different (not just a substring)
-  if (profileName && !cvName.includes(profileName) && !profileName.includes(cvName)) {
-    // Check email match as secondary indicator
-    const cvEmail = normalize(cvContent.personalInfo.email)
-    const profileEmail = normalize(profile.email)
-
-    // If email also differs, high confidence it's a different person
-    if (cvEmail && profileEmail && cvEmail !== profileEmail) {
-      return true
-    }
-  }
-
+  // DISABLED — causes false positives
+  // The fingerprint comparison in saveCV handles actual person swapping
   return false
 }
