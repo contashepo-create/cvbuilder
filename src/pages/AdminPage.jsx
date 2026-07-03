@@ -1008,47 +1008,164 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* CV Content */}
+              {/* CV Content — FULL DETAILS */}
               <div className="border-t pt-4">
-                <h3 className="font-semibold mb-2">{isAr ? 'محتوى السي في' : 'CV Content'}</h3>
-                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-[50vh] overflow-y-auto">
-                  {viewingCV.content?.personalInfo?.photo && (
-                    <div className="mb-3">
-                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{isAr ? 'الصورة الشخصية' : 'Profile Photo'}</p>
-                      <img
-                        src={viewingCV.content.personalInfo.photo}
-                        alt="Profile"
-                        className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80"
-                        onClick={() => window.open(viewingCV.content.personalInfo.photo, '_blank')}
-                      />
+                <h3 className="font-semibold mb-2">{isAr ? 'محتوى السي في — كامل البيانات' : 'CV Content — Full Details'}</h3>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-[55vh] overflow-y-auto space-y-4">
+
+                  {/* Personal Info */}
+                  <div>
+                    <p className="text-xs font-bold uppercase text-gray-400 mb-2 border-b pb-1">{isAr ? 'المعلومات الشخصية' : 'Personal Information'}</p>
+                    <div className="flex items-start gap-3">
+                      {viewingCV.content?.personalInfo?.photo && (
+                        <img
+                          src={viewingCV.content.personalInfo.photo}
+                          alt="Profile"
+                          className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80 flex-shrink-0"
+                          onClick={() => window.open(viewingCV.content.personalInfo.photo, '_blank')}
+                        />
+                      )}
+                      <div className="space-y-0.5">
+                        {viewingCV.content?.personalInfo?.fullName && (
+                          <p className="font-bold text-lg">{viewingCV.content.personalInfo.fullName}</p>
+                        )}
+                        {viewingCV.content?.personalInfo?.jobTitle && (
+                          <p className="text-primary-600 text-sm">{viewingCV.content.personalInfo.jobTitle}</p>
+                        )}
+                        {viewingCV.content?.personalInfo?.email && (
+                          <p className="text-xs text-gray-500" dir="ltr">📧 {viewingCV.content.personalInfo.email}</p>
+                        )}
+                        {viewingCV.content?.personalInfo?.phone && (
+                          <p className="text-xs text-gray-500" dir="ltr">📱 {viewingCV.content.personalInfo.phone}</p>
+                        )}
+                        {viewingCV.content?.personalInfo?.address && (
+                          <p className="text-xs text-gray-500">📍 {viewingCV.content.personalInfo.address}</p>
+                        )}
+                        {viewingCV.content?.personalInfo?.links && (
+                          <div className="text-xs text-gray-500 flex flex-wrap gap-2 mt-1">
+                            {viewingCV.content.personalInfo.links.linkedin && <span>🔗 LinkedIn</span>}
+                            {viewingCV.content.personalInfo.links.github && <span>🔗 GitHub</span>}
+                            {viewingCV.content.personalInfo.links.website && <span>🌐 {viewingCV.content.personalInfo.links.website}</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {viewingCV.content?.personalInfo?.fullName && (
-                    <p className="font-bold text-lg">{viewingCV.content.personalInfo.fullName}</p>
-                  )}
-                  {viewingCV.content?.personalInfo?.jobTitle && (
-                    <p className="text-primary-600">{viewingCV.content.personalInfo.jobTitle}</p>
-                  )}
-                  {viewingCV.content?.personalInfo?.email && (
-                    <p className="text-xs text-gray-500">{viewingCV.content.personalInfo.email}</p>
-                  )}
+                  </div>
+
+                  {/* Summary */}
                   {viewingCV.content?.summary && (
-                    <p className="text-sm mt-3 text-gray-700 dark:text-gray-300">{viewingCV.content.summary}</p>
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'الملخص المهني' : 'Professional Summary'}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{viewingCV.content.summary}</p>
+                    </div>
                   )}
+
+                  {/* Experience */}
                   {viewingCV.content?.experience?.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{isAr ? 'الخبرات' : 'Experience'}</p>
-                      {viewingCV.content.experience.map((exp, i) => (
-                        <p key={i} className="text-xs text-gray-600">• {exp.position} at {exp.company}</p>
-                      ))}
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'الخبرات العملية' : 'Work Experience'}</p>
+                      <div className="space-y-2">
+                        {viewingCV.content.experience.map((exp, i) => (
+                          <div key={i} className="text-xs">
+                            <p className="font-medium text-gray-800 dark:text-gray-200">{exp.position || '—'} — {exp.company || '—'}</p>
+                            <p className="text-gray-500">{exp.startDate || '—'} → {exp.current ? (isAr ? 'حتى الآن' : 'Present') : (exp.endDate || '—')}</p>
+                            {exp.description && <p className="text-gray-600 dark:text-gray-400 mt-0.5 whitespace-pre-line">{exp.description}</p>}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {/* Education */}
+                  {viewingCV.content?.education?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'التعليم' : 'Education'}</p>
+                      <div className="space-y-2">
+                        {viewingCV.content.education.map((edu, i) => (
+                          <div key={i} className="text-xs">
+                            <p className="font-medium text-gray-800 dark:text-gray-200">{edu.degree || '—'}{edu.field ? ` — ${edu.field}` : ''}</p>
+                            <p className="text-gray-500">{edu.institution || '—'} ({edu.startDate || '—'} → {edu.endDate || '—'})</p>
+                            {edu.description && <p className="text-gray-600 dark:text-gray-400 mt-0.5">{edu.description}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skills */}
                   {viewingCV.content?.skills?.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{isAr ? 'المهارات' : 'Skills'}</p>
-                      <p className="text-xs text-gray-600">{viewingCV.content.skills.map(s => s.name).join(' • ')}</p>
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'المهارات' : 'Skills'}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {viewingCV.content.skills.map((s, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                            {s.name} {s.level && <span className="text-blue-400">({s.level})</span>}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
+
+                  {/* Languages */}
+                  {viewingCV.content?.languages?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'اللغات' : 'Languages'}</p>
+                      <div className="text-xs space-y-0.5">
+                        {viewingCV.content.languages.map((lang, i) => (
+                          <p key={i} className="text-gray-700 dark:text-gray-300">{lang.name} — <span className="text-gray-500">{lang.level}</span></p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Certifications */}
+                  {viewingCV.content?.certifications?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ?'الشهادات' : 'Certifications'}</p>
+                      <div className="text-xs space-y-0.5">
+                        {viewingCV.content.certifications.map((cert, i) => (
+                          <p key={i} className="text-gray-700 dark:text-gray-300">
+                            {cert.name} — {cert.issuer} {cert.date && <span className="text-gray-500">({cert.date})</span>}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Projects */}
+                  {viewingCV.content?.projects?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'المشاريع' : 'Projects'}</p>
+                      <div className="text-xs space-y-2">
+                        {viewingCV.content.projects.map((proj, i) => (
+                          <div key={i}>
+                            <p className="font-medium text-gray-800 dark:text-gray-200">{proj.name}</p>
+                            {proj.description && <p className="text-gray-600 dark:text-gray-400">{proj.description}</p>}
+                            {proj.url && <p className="text-blue-500" dir="ltr">{proj.url}</p>}
+                            {proj.technologies?.length > 0 && (
+                              <p className="text-gray-500 mt-0.5">Tech: {proj.technologies.join(' • ')}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Section Order */}
+                  {viewingCV.content?.sectionOrder?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1 border-b pb-1">{isAr ? 'ترتيب الأقسام' : 'Section Order'}</p>
+                      <p className="text-xs text-gray-500">{viewingCV.content.sectionOrder.join(' → ')}</p>
+                    </div>
+                  )}
+
+                  {/* Raw JSON (collapsible) */}
+                  <details className="mt-2">
+                    <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">{isAr ? 'عرض JSON الخام' : 'View raw JSON'}</summary>
+                    <pre className="text-xs text-gray-500 mt-1 p-2 rounded bg-gray-100 dark:bg-gray-800 overflow-x-auto max-h-40">
+                      {JSON.stringify(viewingCV.content, null, 2)}
+                    </pre>
+                  </details>
                 </div>
               </div>
 
