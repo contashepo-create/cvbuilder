@@ -73,6 +73,13 @@ export const useAuthStore = create((set, get) => ({
           finalProfile = newProfile
         }
 
+        // Update last_seen on page load
+        try {
+          await supabase.from('profiles')
+            .update({ last_seen: new Date().toISOString() })
+            .eq('id', user.id)
+        } catch {}
+
         let admin = false
         try {
           admin = await isAdminEmail(user.email)
@@ -187,7 +194,14 @@ export const useAuthStore = create((set, get) => ({
         .select()
         .single()
 
-      // Check admin EVEN when creating new profile
+      // Update last_seen
+    try {
+      await supabase.from('profiles')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('id', data.user.id)
+    } catch {}
+
+    // Check admin EVEN when creating new profile
       let admin = false
       try {
         admin = await isAdminEmail(data.user.email)

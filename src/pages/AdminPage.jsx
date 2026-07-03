@@ -9,7 +9,7 @@ import { PLANS, PAYMENT_METHODS, ADMIN_SECRET_PATH, ADMIN_SECRET_KEY } from '../
 import {
   Users, FileText, CreditCard, Ticket, Flag, Check, X,
   Crown, Copy, LogOut, Search, Shield, Loader2, AlertTriangle,
-  KeyRound, MessageCircle, Clock,
+  KeyRound, MessageCircle, Clock, Trash2, Eye, X as XIcon,
 } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
 import { send2FACode } from '../lib/telegramBot'
@@ -267,6 +267,68 @@ export default function AdminPage() {
     } catch (err) {
       alert(err.message)
     }
+  }
+
+  // Permanently delete a user account + all their data
+  const handleDeleteUser = async (userId, userName) => {
+    if (!confirm(
+      isAr
+        ? `⚠️ حذف نهائي!\n\nسيتم حذف "${userName}" وكل بياناته (السي فيات، الاشتراك، كل شيء).\nهذا الإجراء لا يمكن التراجع عنه.\n\nهل أنت متأكد؟`
+        : `⚠️ PERMANENT DELETE!\n\n"${userName}" and ALL their data (CVs, subscription, everything) will be deleted.\nThis cannot be undone.\n\nAre you sure?`
+    )) return
+
+    const confirmText = prompt(isAr ? 'اكتب "حذف" للتأكيد' : 'Type "DELETE" to confirm')
+    if (confirmText !== (isAr ? 'حذف' : 'DELETE')) {
+      alert(isAr ? 'تم الإلغاء' : 'Cancelled')
+      return
+    }
+
+    try {
+      // Use RPC function to delete from auth.users (cascades everything)
+      const { error } = await supabase.rpc('admin_delete_user', { target_user_id: userId })
+      if (error) throw error
+      alert(isAr ? 'تم حذف المستخدم وكل بياناته نهائياً' : 'User and all data deleted permanently')
+      loadAllData()
+    } catch (err) {
+      alert(isAr ? `خطأ: ${err.message}` : `Error: ${err.message}`)
+    }
+  }
+
+  // Delete a single CV (admin only)
+  const handleDeleteCV = async (cvId, cvTitle) => {
+    if (!confirm(
+      isAr
+        ? `حذف السي في "${cvTitle}"؟\nلا يمكن التراجع عن هذا.`
+        : `Delete CV "${cvTitle}"?\nThis cannot be undone.`
+    )) return
+
+    try {
+      const { error } = await supabase.rpc('admin_delete_cv', { cv_id: cvId })
+      if (error) throw error
+      alert(isAr ? 'تم حذف السي في' : 'CV deleted')
+      loadAllData()
+    } catch (err) {
+      alert(isAr ? `خطأ: ${err.message}` : `Error: ${err.message}`)
+    }
+  }
+
+  // View CV details
+  const [viewingCV, setViewingCV] = useState(null)
+
+  const handleViewCV = (cv) => {
+    setViewingCV(cv)
+  }
+
+  const formatLastSeen = (timestamp) => {
+    if (!timestamp) return isAr ? 'لم يسجل دخول' : 'Never'
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diff = (now - date) / 1000
+
+    if (diff < 60) return isAr ? 'الآن' : 'Just now'
+    if (diff < 3600) return isAr ? `قبل ${Math.floor(diff / 60)} دقيقة` : `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return isAr ? `قبل ${Math.floor(diff / 3600)} ساعة` : `${Math.floor(diff / 3600)}h ago`
+    return date.toLocaleDateString(isAr ? 'ar' : 'en', { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
   const handleActivateUser = async (userId, plan) => {
@@ -571,6 +633,7 @@ export default function AdminPage() {
                         <th className="text-start py-2 px-3">{isAr ? 'الهاتف' : 'Phone'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'المدينة' : 'City'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'الباقة / الحد' : 'Plan / Limit'}</th>
+                        <th className="text-start py-2 px-3">{isAr ? 'آخر ظهور' : 'Last seen'}</th>
                         <th className="text-start py-2 px-3">{isAr ? 'إجراءات' : 'Actions'}</th>
                       </tr>
                     </thead>
@@ -585,6 +648,8 @@ export default function AdminPage() {
                           onBlock={handleBlockUser}
                           onUnblock={handleUnblockUser}
                           onSetCustomLimit={handleSetCustomLimit}
+                          onDeleteUser={handleDeleteUser}
+                          formatLastSeen={formatLastSeen}
                           onReload={loadAllData}
                           supabase={supabase}
                           PLANS={PLANS}
@@ -820,6 +885,7 @@ export default function AdminPage() {
                       <th className="text-start py-2 px-3">{isAr ? 'القالب' : 'Template'}</th>
                       <th className="text-start py-2 px-3">{isAr ? 'الحالة' : 'Status'}</th>
                       <th className="text-start py-2 px-3">{isAr ? 'التاريخ' : 'Date'}</th>
+                      <th className="text-start py-2 px-3">{isAr ? 'إجراءات' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -838,6 +904,22 @@ export default function AdminPage() {
                           )}
                         </td>
                         <td className="py-2 px-3 text-gray-500">{new Date(cv.updated_at).toLocaleDateString()}</td>
+                        <td className="py-2 px-3">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleViewCV(cv)}
+                              className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded bg-blue-50 flex items-center gap-1"
+                            >
+                              <Eye size={12} /> {isAr ? 'عرض' : 'View'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCV(cv.id, cv.title || 'Untitled')}
+                              className="text-xs text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded flex items-center gap-1"
+                            >
+                              <Trash2 size={12} /> {isAr ? 'حذف' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -845,6 +927,98 @@ export default function AdminPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* CV Details Viewer Modal */}
+        {viewingCV && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingCV(null)}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold">{viewingCV.title || 'Untitled CV'}</h2>
+                <button onClick={() => setViewingCV(null)} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* CV Info */}
+              <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                <div>
+                  <span className="text-gray-500">{isAr ? 'المستخدم:' : 'User:'}</span>
+                  <span className="font-medium"> {viewingCV.profiles?.email || viewingCV.user_id?.slice(0, 8)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">{isAr ? 'القالب:' : 'Template:'}</span>
+                  <span className="font-medium"> {viewingCV.template_id}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">{isAr ? 'الحالة:' : 'Status:'}</span>
+                  {viewingCV.is_flagged ? (
+                    <span className="badge bg-red-100 text-red-700 ml-1">{isAr ? 'موسوم' : 'Flagged'}</span>
+                  ) : (
+                    <span className="badge bg-green-100 text-green-700 ml-1">{isAr ? 'طبيعي' : 'OK'}</span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-gray-500">{isAr ? 'التاريخ:' : 'Date:'}</span>
+                  <span className="font-medium"> {new Date(viewingCV.updated_at).toLocaleDateString()}</span>
+                </div>
+                {viewingCV.flag_reason && (
+                  <div className="col-span-2 p-2 rounded bg-red-50 text-red-700 text-xs">
+                    ⚠️ {viewingCV.flag_reason}
+                  </div>
+                )}
+              </div>
+
+              {/* CV Content */}
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-2">{isAr ? 'محتوى السي في' : 'CV Content'}</h3>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-[50vh] overflow-y-auto">
+                  {viewingCV.content?.personalInfo?.photo && (
+                    <img src={viewingCV.content.personalInfo.photo} alt="" className="w-20 h-20 rounded-full mb-3 object-cover" />
+                  )}
+                  {viewingCV.content?.personalInfo?.fullName && (
+                    <p className="font-bold text-lg">{viewingCV.content.personalInfo.fullName}</p>
+                  )}
+                  {viewingCV.content?.personalInfo?.jobTitle && (
+                    <p className="text-primary-600">{viewingCV.content.personalInfo.jobTitle}</p>
+                  )}
+                  {viewingCV.content?.personalInfo?.email && (
+                    <p className="text-xs text-gray-500">{viewingCV.content.personalInfo.email}</p>
+                  )}
+                  {viewingCV.content?.summary && (
+                    <p className="text-sm mt-3 text-gray-700 dark:text-gray-300">{viewingCV.content.summary}</p>
+                  )}
+                  {viewingCV.content?.experience?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{isAr ? 'الخبرات' : 'Experience'}</p>
+                      {viewingCV.content.experience.map((exp, i) => (
+                        <p key={i} className="text-xs text-gray-600">• {exp.position} at {exp.company}</p>
+                      ))}
+                    </div>
+                  )}
+                  {viewingCV.content?.skills?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{isAr ? 'المهارات' : 'Skills'}</p>
+                      <p className="text-xs text-gray-600">{viewingCV.content.skills.map(s => s.name).join(' • ')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 mt-4 justify-end">
+                <button
+                  onClick={() => handleDeleteCV(viewingCV.id, viewingCV.title || 'Untitled')}
+                  className="btn bg-red-600 text-white hover:bg-red-700 text-sm"
+                >
+                  <Trash2 size={16} /> {isAr ? 'حذف السي في' : 'Delete CV'}
+                </button>
+                <button onClick={() => setViewingCV(null)} className="btn-secondary text-sm">
+                  {isAr ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -870,7 +1044,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 // ---- User Row Component (separate to allow useState) ----
-function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSetCustomLimit, onReload, supabase, PLANS }) {
+function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSetCustomLimit, onDeleteUser, formatLastSeen, onReload, supabase, PLANS }) {
   const userSub = allSubs.find(s => s.user_id === u.id)
   const isBlocked = userSub?.status === 'blocked'
   const currentLimit = userSub?.custom_max_cvs || PLANS[userSub?.plan]?.maxCVs || 1
@@ -943,6 +1117,11 @@ function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSet
         </div>
       </td>
       <td className="py-2 px-3">
+        <span className={`text-xs ${u.last_seen ? 'text-gray-500' : 'text-gray-400'}`}>
+          {formatLastSeen(u.last_seen)}
+        </span>
+      </td>
+      <td className="py-2 px-3">
         {editing ? (
           <div className="flex flex-col gap-1.5">
             {/* Custom CV limit */}
@@ -1003,6 +1182,14 @@ function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSet
                 {isAr ? 'حظر' : 'Block'}
               </button>
             )}
+            <button
+              onClick={() => onDeleteUser(u.id, u.full_name || u.email)}
+              className="text-xs text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded flex items-center gap-1 font-medium"
+              title={isAr ? 'حذف نهائي' : 'Delete permanently'}
+            >
+              <Trash2 size={12} />
+              {isAr ? 'حذف' : 'Delete'}
+            </button>
           </div>
         )}
       </td>
