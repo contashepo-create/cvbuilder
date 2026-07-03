@@ -1013,7 +1013,15 @@ export default function AdminPage() {
                 <h3 className="font-semibold mb-2">{isAr ? 'محتوى السي في' : 'CV Content'}</h3>
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-[50vh] overflow-y-auto">
                   {viewingCV.content?.personalInfo?.photo && (
-                    <img src={viewingCV.content.personalInfo.photo} alt="" className="w-20 h-20 rounded-full mb-3 object-cover" />
+                    <div className="mb-3">
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-1">{isAr ? 'الصورة الشخصية' : 'Profile Photo'}</p>
+                      <img
+                        src={viewingCV.content.personalInfo.photo}
+                        alt="Profile"
+                        className="w-24 h-24 rounded-full object-cover border-2 border-gray-200 cursor-pointer hover:opacity-80"
+                        onClick={() => window.open(viewingCV.content.personalInfo.photo, '_blank')}
+                      />
+                    </div>
                   )}
                   {viewingCV.content?.personalInfo?.fullName && (
                     <p className="font-bold text-lg">{viewingCV.content.personalInfo.fullName}</p>
