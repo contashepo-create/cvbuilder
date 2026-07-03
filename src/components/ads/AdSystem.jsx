@@ -9,8 +9,12 @@ export default function AdSystem() {
   const [dismissedAds, setDismissedAds] = useState([])
 
   useEffect(() => {
-    fetchActiveAds()
-    fetchSettings()
+    try {
+      fetchActiveAds()
+      fetchSettings()
+    } catch (e) {
+      console.error('Ad fetch failed:', e)
+    }
   }, [])
 
   // Load dismissed ads from localStorage
@@ -26,24 +30,28 @@ export default function AdSystem() {
     if (user) dismissAd(adId, user.id)
   }
 
-  // Track views once
+  // Track views once (wrapped to prevent crash)
   useEffect(() => {
-    ads.forEach((ad) => {
-      if (!dismissedAds.includes(ad.id)) {
-        trackAdView(ad.id, user?.id, user?.email)
-      }
-    })
+    try {
+      (ads || []).forEach((ad) => {
+        if (!dismissedAds.includes(ad.id)) {
+          trackAdView(ad.id, user?.id, user?.email)
+        }
+      })
+    } catch (e) {
+      console.error('Ad view tracking failed:', e)
+    }
   }, [ads])
 
-  // Filter out dismissed ads
-  const visibleAds = ads.filter(ad => !dismissedAds.includes(ad.id))
+  // Filter out dismissed ads (safe defaults)
+  const visibleAds = (ads || []).filter(ad => !dismissedAds.includes(ad.id))
 
   // Separate by type
   const scrollingAds = visibleAds.filter(a => a.type === 'scrolling')
   const bannerAds = visibleAds.filter(a => a.type === 'banner')
   const popupAds = visibleAds.filter(a => a.type === 'popup')
 
-  // Scrolling text from settings
+  // Scrolling text from settings (safe access)
   const scrollingText = settings?.scrolling_enabled === 'true'
     ? (document.documentElement.dir === 'rtl' ? settings?.scrolling_text_ar : settings?.scrolling_text_en)
     : ''

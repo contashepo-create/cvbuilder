@@ -31,11 +31,15 @@ export default function App() {
     init()
   }, [init])
 
-  // Track visit on page change
+  // Track visit on page change (wrapped in try/catch to prevent white screen)
   useEffect(() => {
     const page = location.pathname
-    trackVisit(page, user?.id, user?.email)
-    fetchVisitorCount()
+    try {
+      trackVisit(page, user?.id, user?.email)
+      fetchVisitorCount()
+    } catch (e) {
+      console.error('Visit tracking failed:', e)
+    }
   }, [location.pathname])
 
   return (

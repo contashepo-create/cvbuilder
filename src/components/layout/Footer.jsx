@@ -11,7 +11,8 @@ export default function Footer() {
     fetchContactLinks()
   }, [])
 
-  const activeLinks = contactLinks.filter(l => l.is_active)
+  const activeLinks = (contactLinks || []).filter(l => l.is_active)
+  const count = visitorCount || 0
 
   return (
     <footer className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 mt-auto transition-colors">
@@ -35,7 +36,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:opacity-80 transition-opacity"
-                title={isAr ? link.name_ar : link.name_en}
+                title={link.name_ar || link.name_en}
                 style={{ color: link.color }}
               >
                 <span className="text-xl">{link.icon}</span>
@@ -46,7 +47,7 @@ export default function Footer() {
           {/* Visitor counter */}
           <div className="flex items-center gap-1.5 text-sm text-gray-400">
             <Eye size={14} />
-            <span>{visitorCount.toLocaleString()} زيارة</span>
+            <span>{count.toLocaleString()} زيارة</span>
           </div>
         </div>
       </div>
