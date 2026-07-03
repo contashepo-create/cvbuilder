@@ -1554,74 +1554,207 @@ function AdsTab({ isAr }) {
   )
 }
 
-// ---- Messages Tab ----
+// ---- Messages Tab (Full conversation system) ----
 function MessagesTab({ isAr }) {
-  const { fetchMessages, replyMessage } = useAdStore()
+  const {
+    fetchAllConversations, fetchConversationMessages,
+    sendConversationMessage, closeConversation, reopenConversation,
+    adminMessageUser, markMessagesRead,
+  } = useAdStore()
+  const [conversations, setConversations] = useState([])
+  const [selectedConv, setSelectedConv] = useState(null)
   const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [replyingTo, setReplyingTo] = useState(null)
   const [replyText, setReplyText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [showNewMsgForm, setShowNewMsgForm] = useState(false)
+  const [newMsgUser, setNewMsgUser] = useState('')
+  const [newMsgSubject, setNewMsgSubject] = useState('')
+  const [newMsgText, setNewMsgText] = useState('')
 
-  useEffect(() => { loadMessages() }, [])
+  useEffect(() => { loadConversations() }, [])
 
-  const loadMessages = async () => {
+  const loadConversations = async () => {
     setLoading(true)
-    const data = await fetchMessages()
-    setMessages(data)
+    const data = await fetchAllConversations()
+    setConversations(data)
     setLoading(false)
   }
 
-  const handleReply = async (msgId) => {
-    if (!replyText.trim()) return
-    await replyMessage(msgId, replyText)
-    setReplyingTo(null)
-    setReplyText('')
-    loadMessages()
+  const handleSelectConv = async (conv) => {
+    setSelectedConv(conv)
+    await fetchConversationMessages(conv.id)
+    await markMessagesRead(conv.id, 'admin')
+    // Refresh messages
+    const msgs = await useAdStore.getState()
+    // Re-read from store
+    const store = useAdStore.getState()
+    setMessages(store.conversationMessages)
+  }
+
+  const handleReply = async () => {
+    if (!replyText.trim() || !selectedConv) return
+    setSending(true)
+    try {
+      await sendConversationMessage(selectedConv.id, replyText.trim(), 'admin')
+      setReplyText('')
+      await fetchConversationMessages(selectedConv.id)
+      setMessages(useAdStore.getState().conversationMessages)
+      loadConversations()
+    } catch (err) { alert(err.message) }
+    finally { setSending(false) }
+  }
+
+  const handleClose = async (convId) => {
+    if (!confirm(isAr ? 'إغلاق هذه المحادثة؟ سيتعين على المستخدم فتح محادثة جديدة.' : 'Close this conversation? User will need to start a new one.')) return
+    await closeConversation(convId)
+    loadConversations()
+    if (selectedConv?.id === convId) setSelectedConv(null)
+  }
+
+  const handleReopen = async (convId) => {
+    await reopenConversation(convId)
+    loadConversations()
+  }
+
+  const handleSendNew = async () => {
+    if (!newMsgUser || !newMsgSubject.trim() || !newMsgText.trim()) return
+    setSending(true)
+    try {
+      await adminMessageUser(newMsgUser, newMsgSubject.trim(), newMsgText.trim())
+      setNewMsgUser(''); setNewMsgSubject(''); setNewMsgText('')
+      setShowNewMsgForm(false)
+      loadConversations()
+      alert(isAr ? 'تم إرسال الرسالة' : 'Message sent')
+    } catch (err) { alert(err.message) }
+    finally { setSending(false) }
   }
 
   if (loading) return <p className="text-center text-gray-400 py-8">{isAr ? 'جاري التحميل...' : 'Loading...'}</p>
 
   return (
-    <div className="space-y-3">
-      {messages.length === 0 && <p className="text-center text-gray-400 py-8">{isAr ? 'لا توجد رسائل' : 'No messages'}</p>}
-      {messages.map(msg => (
-        <div key={msg.id} className={`card ${msg.status === 'unread' ? 'border-blue-300 bg-blue-50/30' : ''}`}>
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div>
-              <p className="font-medium text-sm">{msg.user_name} <span className="text-gray-400 text-xs">({msg.user_email})</span></p>
-              <p className="text-xs text-gray-500">{msg.subject}</p>
-            </div>
-            <span className={`badge ${msg.status === 'unread' ? 'bg-blue-100 text-blue-700' : msg.status === 'replied' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-              {msg.status}
-            </span>
+    <div className="space-y-4">
+      {/* Admin: send message to specific user */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">{isAr ? 'إرسال رسالة لمستخدم' : 'Message a user'}</h3>
+          <button onClick={() => setShowNewMsgForm(!showNewMsgForm)} className="btn-primary text-sm">
+            + {isAr ? 'رسالة جديدة' : 'New message'}
+          </button>
+        </div>
+        {showNewMsgForm && (
+          <div className="space-y-2 mb-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+            <select value={newMsgUser} onChange={(e) => setNewMsgUser(e.target.value)} className="input">
+              <option value="">{isAr ? 'اختر مستخدم...' : 'Select user...'}</option>
+              {/* allUsers is passed via props or fetched */}
+            </select>
+            <input type="text" value={newMsgSubject} onChange={(e) => setNewMsgSubject(e.target.value)} className="input" placeholder={isAr ? 'الموضوع' : 'Subject'} maxLength={200} />
+            <textarea value={newMsgText} onChange={(e) => setNewMsgText(e.target.value)} className="input min-h-[80px]" placeholder={isAr ? 'الرسالة' : 'Message'} maxLength={2000} />
+            <button onClick={handleSendNew} disabled={sending || !newMsgUser || !newMsgSubject.trim() || !newMsgText.trim()} className="btn-primary text-sm">
+              {sending ? '...' : (isAr ? 'إرسال' : 'Send')}
+            </button>
           </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{msg.message}</p>
-          <p className="text-xs text-gray-400">{new Date(msg.created_at).toLocaleString()}</p>
+        )}
+      </div>
 
-          {msg.admin_reply && (
-            <div className="mt-2 p-2 rounded bg-green-50 text-sm">
-              <p className="text-xs font-medium text-green-700">{isAr ? 'رد الإدارة:' : 'Admin reply:'}</p>
-              <p className="text-green-800">{msg.admin_reply}</p>
-            </div>
-          )}
-
-          {msg.status !== 'replied' && (
-            replyingTo === msg.id ? (
-              <div className="mt-2 space-y-2">
-                <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} className="input min-h-[60px]" placeholder={isAr ? 'اكتب ردك...' : 'Write your reply...'} />
-                <div className="flex gap-2">
-                  <button onClick={() => handleReply(msg.id)} className="btn-primary text-sm">{isAr ? 'إرسال' : 'Send'}</button>
-                  <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="btn-secondary text-sm">{isAr ? 'إلغاء' : 'Cancel'}</button>
+      {/* Conversations list + chat */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Conversations list */}
+        <div className="lg:col-span-1 space-y-2">
+          {conversations.length === 0 && <p className="text-center text-gray-400 py-4">{isAr ? 'لا توجد محادثات' : 'No conversations'}</p>}
+          {conversations.map(conv => {
+            const lastMsg = conv.conversation_messages?.[conv.conversation_messages.length - 1]
+            const unread = conv.conversation_messages?.filter(m => m.sender_type === 'user' && !m.read_at).length || 0
+            return (
+              <button
+                key={conv.id}
+                onClick={() => handleSelectConv(conv)}
+                className={`w-full text-start p-3 rounded-lg border transition-colors ${
+                  selectedConv?.id === conv.id ? 'border-primary-400 bg-primary-50' : 'border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium text-sm truncate flex-1">{conv.subject || (isAr ? 'بدون موضوع' : 'No subject')}</span>
+                  {conv.status === 'closed' && <span className="badge bg-gray-100 text-gray-500 text-xs">🔒</span>}
                 </div>
-              </div>
-            ) : (
-              <button onClick={() => setReplyingTo(msg.id)} className="btn-outline text-sm mt-2">
-                {isAr ? 'رد' : 'Reply'}
+                <p className="text-xs text-gray-500 truncate">
+                  {conv.profiles?.email || 'Unknown'}
+                </p>
+                {lastMsg && <p className="text-xs text-gray-400 truncate mt-0.5">
+                  {lastMsg.sender_type === 'admin' ? (isAr ? 'الإدارة: ' : 'Admin: ') : ''}{lastMsg.message}
+                </p>}
+                {unread > 0 && <span className="bg-primary-600 text-white text-xs px-1.5 rounded-full mt-1 inline-block">{unread} {isAr ? 'جديد' : 'new'}</span>}
               </button>
             )
+          })}
+        </div>
+
+        {/* Chat panel */}
+        <div className="lg:col-span-2">
+          {selectedConv ? (
+            <div className="card flex flex-col" style={{ minHeight: '400px' }}>
+              <div className="flex items-center justify-between border-b pb-3 mb-3">
+                <div>
+                  <h3 className="font-medium">{selectedConv.subject || (isAr ? 'بدون موضوع' : 'No subject')}</h3>
+                  <p className="text-xs text-gray-400">
+                    {selectedConv.profiles?.email || 'Unknown'} •
+                    {selectedConv.status === 'closed' ? (isAr ? ' مغلقة' : ' Closed') : (isAr ? ' مفتوحة' : ' Open')}
+                  </p>
+                </div>
+                {selectedConv.status === 'open' ? (
+                  <button onClick={() => handleClose(selectedConv.id)} className="btn bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm">
+                    {isAr ? 'إغلاق المحادثة' : 'Close'}
+                  </button>
+                ) : (
+                  <button onClick={() => handleReopen(selectedConv.id)} className="btn-outline text-sm">
+                    {isAr ? 'إعادة فتح' : 'Reopen'}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 mb-4" style={{ maxHeight: '400px' }}>
+                {messages.map(msg => (
+                  <div key={msg.id} className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] p-3 rounded-lg ${
+                      msg.sender_type === 'admin'
+                        ? 'bg-primary-600 text-white rounded-br-none'
+                        : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                    }`}>
+                      <p className="text-sm whitespace-pre-line">{msg.message}</p>
+                      <p className={`text-xs mt-1 ${msg.sender_type === 'admin' ? 'text-primary-200' : 'text-gray-400'}`}>
+                        {msg.sender_type === 'admin' ? (isAr ? 'الإدارة' : 'Admin') : (isAr ? 'المستخدم' : 'User')}
+                        {' • '}
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedConv.status === 'open' && (
+                <div className="flex gap-2 border-t pt-3">
+                  <input
+                    type="text"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleReply() }}
+                    className="input flex-1"
+                    placeholder={isAr ? 'اكتب ردك...' : 'Type your reply...'}
+                    maxLength={2000}
+                  />
+                  <button onClick={handleReply} disabled={sending || !replyText.trim()} className="btn-primary">
+                    {sending ? '...' : (isAr ? 'إرسال' : 'Send')}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="card flex items-center justify-center text-gray-400" style={{ minHeight: '400px' }}>
+              <p>{isAr ? 'اختر محادثة لعرضها' : 'Select a conversation'}</p>
+            </div>
           )}
         </div>
-      ))}
+      </div>
     </div>
   )
 }

@@ -8,6 +8,19 @@ const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || ''
 const ADMIN_CHAT_ID = import.meta.env.VITE_TELEGRAM_ADMIN_CHAT_ID || ''
 
 /**
+ * Escape HTML entities to prevent injection in Telegram messages
+ */
+function esc(str) {
+  if (!str || typeof str !== 'string') return ''
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+/**
  * Send a message to admin's Telegram
  * @param {string} message - Text message to send
  * @returns {Promise<boolean>}
@@ -54,13 +67,13 @@ export async function sendPaymentNotification(data) {
   const message = `
 🔔 <b>طلب اشتراك جديد</b>
 
-👤 <b>الاسم:</b> ${data.userName}
-📧 <b>الإيميل:</b> ${data.userEmail}
-📦 <b>الباقة:</b> ${data.plan}
-💰 <b>طريقة الدفع:</b> ${data.paymentMethod}
-🔢 <b>رقم العملية:</b> ${data.transactionRef}
-📅 <b>تاريخ الدفع:</b> ${data.paymentDate}
-🆔 <b>رقم الطلب:</b> <code>${data.requestId}</code>
+👤 <b>الاسم:</b> ${esc(data.userName)}
+📧 <b>الإيميل:</b> ${esc(data.userEmail)}
+📦 <b>الباقة:</b> ${esc(data.plan)}
+💰 <b>طريقة الدفع:</b> ${esc(data.paymentMethod)}
+🔢 <b>رقم العملية:</b> ${esc(data.transactionRef)}
+📅 <b>تاريخ الدفع:</b> ${esc(data.paymentDate)}
+🆔 <b>رقم الطلب:</b> <code>${esc(data.requestId)}</code>
 
 ✅ راجع الطلب في لوحة التحكم
   `.trim()
@@ -152,12 +165,12 @@ export async function sendSecurityAlert(data) {
   const message = `
 ${emoji} <b>تنبيه أمني</b>
 
-📋 <b>النوع:</b> ${typeLabels[data.type] || data.type}
-${data.email ? `📧 <b>الإيميل:</b> ${data.email}` : ''}
-${data.ip ? `🌐 <b>IP:</b> <code>${data.ip}</code>` : ''}
-📱 <b>الجهاز:</b> ${data.userAgent || 'Unknown'}
-${data.attempts ? `🔢 <b>المحاولات:</b> ${data.attempts}` : ''}
-${data.details ? `📝 <b>التفاصيل:</b> ${data.details}` : ''}
+📋 <b>النوع:</b> ${esc(typeLabels[data.type] || data.type)}
+${data.email ? `📧 <b>الإيميل:</b> ${esc(data.email)}` : ''}
+${data.ip ? `🌐 <b>IP:</b> <code>${esc(data.ip)}</code>` : ''}
+📱 <b>الجهاز:</b> ${esc(data.userAgent || 'Unknown')}
+${data.attempts ? `🔢 <b>المحاولات:</b> ${esc(String(data.attempts))}` : ''}
+${data.details ? `📝 <b>التفاصيل:</b> ${esc(data.details)}` : ''}
 🕐 <b>الوقت:</b> ${new Date().toLocaleString('ar')}
   `.trim()
 

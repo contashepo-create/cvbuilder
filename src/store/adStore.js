@@ -127,6 +127,201 @@ export const useAdStore = create((set, get) => ({
     if (error) throw error
   },
 
+  // ---- Messaging system (conversations) ----
+  conversations: [],
+  currentConversation: null,
+  conversationMessages: [],
+
+  // User: fetch their conversations
+  fetchUserConversations: async (userId) => {
+    if (DEMO_MODE) {
+      const stored = JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+      set({ conversations: stored.filter(c => c.user_id === userId) })
+      return
+    }
+    const { data } = await supabase
+      .from('conversations')
+      .select('*, conversation_messages(*)')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+    set({ conversations: data || [] })
+  },
+
+  // User/Admin: fetch messages in a conversation
+  fetchConversationMessages: async (conversationId) => {
+    if (DEMO_MODE) {
+      const convs = JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+      const conv = convs.find(c => c.id === conversationId)
+      set({ conversationMessages: conv?.conversation_messages || [] })
+      return
+    }
+    const { data } = await supabase
+      .from('conversation_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+    set({ conversationMessages: data || [] })
+  },
+
+  // Create a new conversation
+  createConversation: async (userId, subject, firstMessage, senderType = 'user') => {
+    if (DEMO_MODE) {
+      const convs = JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+      const newConv = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        subject,
+        status: 'open',
+        created_by: senderType,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        conversation_messages: [{
+          id: crypto.randomUUID(),
+          conversation_id: 'temp',
+          sender_type: senderType,
+          message: firstMessage,
+          created_at: new Date().toISOString(),
+        }],
+      }
+      newConv.conversation_messages[0].conversation_id = newConv.id
+      convs.unshift(newConv)
+      localStorage.setItem('demo_conversations', JSON.stringify(convs))
+      set({ conversations: [newConv, ...get().conversations] })
+      return newConv
+    }
+
+    // Create conversation
+    const { data: conv, error: convError } = await supabase
+      .from('conversations')
+      .insert({ user_id: userId, subject, status: 'open', created_by: senderType })
+      .select()
+      .single()
+    if (convError) throw convError
+
+    // Add first message
+    const { error: msgError } = await supabase
+      .from('conversation_messages')
+      .insert({
+        conversation_id: conv.id,
+        sender_id: senderType === 'user' ? userId : null,
+        sender_type: senderType,
+        message: firstMessage,
+      })
+    if (msgError) throw msgError
+
+    // Return conversation with messages
+    const { data: fullConv } = await supabase
+      .from('conversations')
+      .select('*, conversation_messages(*)')
+      .eq('id', conv.id)
+      .single()
+    return fullConv
+  },
+
+  // Send a message in an existing conversation
+  sendConversationMessage: async (conversationId, message, senderType, senderId = null) => {
+    if (DEMO_MODE) {
+      const convs = JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+      const idx = convs.findIndex(c => c.id === conversationId)
+      if (idx >= 0) {
+        convs[idx].conversation_messages = convs[idx].conversation_messages || []
+        convs[idx].conversation_messages.push({
+          id: crypto.randomUUID(),
+          conversation_id: conversationId,
+          sender_type: senderType,
+          message,
+          created_at: new Date().toISOString(),
+        })
+        convs[idx].updated_at = new Date().toISOString()
+        localStorage.setItem('demo_conversations', JSON.stringify(convs))
+        set({ conversationMessages: convs[idx].conversation_messages })
+      }
+      return
+    }
+
+    const { error } = await supabase
+      .from('conversation_messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: senderId,
+        sender_type: senderType,
+        message,
+      })
+    if (error) throw error
+
+    // Update conversation updated_at
+    await supabase.from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId)
+
+    // Refresh messages
+    await get().fetchConversationMessages(conversationId)
+  },
+
+  // Mark messages as read
+  markMessagesRead: async (conversationId, senderType) => {
+    if (DEMO_MODE) return
+    // Mark messages from the OTHER party as read
+    const otherType = senderType === 'user' ? 'admin' : 'user'
+    await supabase
+      .from('conversation_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('sender_type', otherType)
+      .is('read_at', null)
+  },
+
+  // Admin: close/lock a conversation
+  closeConversation: async (conversationId) => {
+    if (DEMO_MODE) {
+      const convs = JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+      const idx = convs.findIndex(c => c.id === conversationId)
+      if (idx >= 0) {
+        convs[idx].status = 'closed'
+        convs[idx].closed_at = new Date().toISOString()
+        localStorage.setItem('demo_conversations', JSON.stringify(convs))
+      }
+      return
+    }
+    await supabase.from('conversations')
+      .update({ status: 'closed', closed_at: new Date().toISOString() })
+      .eq('id', conversationId)
+  },
+
+  // Admin: reopen a conversation
+  reopenConversation: async (conversationId) => {
+    if (DEMO_MODE) {
+      const convs = JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+      const idx = convs.findIndex(c => c.id === conversationId)
+      if (idx >= 0) {
+        convs[idx].status = 'open'
+        convs[idx].closed_at = null
+        localStorage.setItem('demo_conversations', JSON.stringify(convs))
+      }
+      return
+    }
+    await supabase.from('conversations')
+      .update({ status: 'open', closed_at: null })
+      .eq('id', conversationId)
+  },
+
+  // Admin: fetch ALL conversations (for admin panel)
+  fetchAllConversations: async () => {
+    if (DEMO_MODE) {
+      return JSON.parse(localStorage.getItem('demo_conversations') || '[]')
+    }
+    const { data } = await supabase
+      .from('conversations')
+      .select('*, conversation_messages(*), profiles(email, full_name)')
+      .order('updated_at', { ascending: false })
+    return data || []
+  },
+
+  // Admin: send message to a specific user (new conversation)
+  adminMessageUser: async (userId, subject, message) => {
+    return get().createConversation(userId, subject, message, 'admin')
+  },
+
   // ---- Admin: fetch all ads ----
   fetchAllAds: async () => {
     if (DEMO_MODE) { return getDemoAds() }

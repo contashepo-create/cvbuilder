@@ -49,8 +49,8 @@ export function escapeHTML(str) {
  */
 export function isValidEmail(email) {
   if (!email || typeof email !== 'string') return false
-  // Reject non-Latin characters (Arabic, etc.)
-  if (!/^[a-zA-Z0-9@.+-_@\s]+$/.test(email)) return false
+  // Reject non-ASCII characters (Arabic, etc.)
+  if (!/^[\x00-\x7F]+$/.test(email)) return false
   return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim())
 }
 

@@ -4,16 +4,7 @@ import { createEmptyCVContent } from '../lib/cvDefaults'
 import { DEFAULT_TEMPLATE } from '../constants/templates'
 import { getDemoCVs, setDemoCVs } from './authStore'
 import { generateFingerprint, compareFingerprints } from '../lib/fingerprint'
-
-// Lazy import to avoid circular dependency
-let _subscriptionStore = null
-const getSubscriptionStore = () => {
-  if (!_subscriptionStore) {
-    const mod = require('./subscriptionStore')
-    _subscriptionStore = mod.useSubscriptionStore
-  }
-  return _subscriptionStore
-}
+import { useSubscriptionStore } from './subscriptionStore'
 
 export const useCVStore = create((set, get) => ({
   cvs: [],
@@ -81,8 +72,7 @@ export const useCVStore = create((set, get) => ({
       .eq('user_id', userId)
 
     // Check against subscription limit
-    const subStore = getSubscriptionStore()
-    const maxCVs = subStore ? subStore.getState().getMaxCVs() : 1
+    const maxCVs = useSubscriptionStore.getState().getMaxCVs()
 
     if ((existingCVs || 0) >= maxCVs) {
       throw new Error('LIMIT_REACHED')
@@ -117,9 +107,10 @@ export const useCVStore = create((set, get) => ({
     return data
   },
 
-  // DELETE removed — users can edit but NOT delete
+  // Users cannot delete CVs — only admin can (via admin_delete_cv RPC)
+  // This is intentionally disabled for regular users
   deleteCV: async () => {
-    throw new Error('DELETE_DISABLED — Users can edit CVs but not delete them')
+    throw new Error('DELETE_DISABLED')
   },
 
   loadCV: async (cvId) => {

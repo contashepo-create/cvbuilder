@@ -17,6 +17,7 @@ import PricingPage from './pages/PricingPage'
 import PaymentPage from './pages/PaymentPage'
 import ActivationPage from './pages/ActivationPage'
 import ContactPage from './pages/ContactPage'
+import MessagesPage from './pages/MessagesPage'
 import AdminPage from './pages/AdminPage'
 import NotFoundPage from './pages/NotFoundPage'
 import { ADMIN_SECRET_PATH } from './constants/plans'
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/verify-email" element={<EmailVerifyPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
           <Route path="/payment/:planId" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
           <Route path="/activate" element={<ProtectedRoute><ActivationPage /></ProtectedRoute>} />
           <Route path={`/${ADMIN_SECRET_PATH}`} element={<AdminPage />} />

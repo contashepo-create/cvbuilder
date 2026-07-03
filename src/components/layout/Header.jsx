@@ -2,13 +2,14 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { useUIStore } from '../../store/uiStore'
-import { LogOut, Menu, X, Globe, FileText, LayoutDashboard, Shield, Moon, Sun } from 'lucide-react'
+import { LogOut, Menu, X, Globe, FileText, LayoutDashboard, Shield, Moon, Sun, MessageCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { DEMO_MODE } from '../../lib/supabase'
 import { ADMIN_SECRET_PATH } from '../../constants/plans'
 
 export default function Header() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const isAr = i18n.language === 'ar'
   const { user, profile, signOut, isAdmin } = useAuthStore()
   const { language, toggleLanguage } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -84,6 +85,10 @@ export default function Header() {
                   <LayoutDashboard size={18} />
                   {t('nav.dashboard')}
                 </Link>
+                <Link to="/messages" className="btn-outline text-sm">
+                  <MessageCircle size={18} />
+                  {isAr ? 'الرسائل' : 'Messages'}
+                </Link>
                 <button onClick={signOut} className="btn-secondary text-sm">
                   <LogOut size={18} />
                   {t('nav.logout')}
@@ -150,6 +155,10 @@ export default function Header() {
                 <Link to="/dashboard" className="btn-outline text-sm" onClick={() => setMobileOpen(false)}>
                   <LayoutDashboard size={18} />
                   {t('nav.dashboard')}
+                </Link>
+                <Link to="/messages" className="btn-outline text-sm" onClick={() => setMobileOpen(false)}>
+                  <MessageCircle size={18} />
+                  {isAr ? 'الرسائل' : 'Messages'}
                 </Link>
                 <button onClick={() => { signOut(); setMobileOpen(false) }} className="btn-secondary text-sm">
                   <LogOut size={18} />
