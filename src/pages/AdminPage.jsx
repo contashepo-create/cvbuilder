@@ -10,8 +10,10 @@ import {
   Users, FileText, CreditCard, Ticket, Flag, Check, X,
   Crown, Copy, LogOut, Search, Shield, Loader2, AlertTriangle,
   KeyRound, MessageCircle, Clock, Trash2, Eye, X as XIcon,
+  Megaphone, Mail, Settings as SettingsIcon,
 } from 'lucide-react'
 import Spinner from '../components/ui/Spinner'
+import { useAdStore } from '../store/adStore'
 import { send2FACode } from '../lib/telegramBot'
 import { createAdminSession, verifyAdminSession, destroyAdminSession } from '../lib/adminAuth'
 
@@ -551,6 +553,9 @@ export default function AdminPage() {
     { id: 'payments', label: isAr ? 'طلبات الدفع' : 'Payments', icon: CreditCard },
     { id: 'codes', label: isAr ? 'أكواد التفعيل' : 'Activation Codes', icon: Ticket },
     { id: 'cvs', label: isAr ? 'السي فيات' : 'CVs', icon: FileText },
+    { id: 'ads', label: isAr ? 'الإعلانات' : 'Ads', icon: Megaphone },
+    { id: 'messages', label: isAr ? 'الرسائل' : 'Messages', icon: Mail },
+    { id: 'visitors', label: isAr ? 'الزوار' : 'Visitors', icon: Eye },
   ]
 
   return (
@@ -926,6 +931,15 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
+
+            {/* Ads Management */}
+            {tab === 'ads' && <AdsTab isAr={isAr} />}
+
+            {/* Messages */}
+            {tab === 'messages' && <MessagesTab isAr={isAr} />}
+
+            {/* Visitors */}
+            {tab === 'visitors' && <VisitorsTab isAr={isAr} />}
           </>
         )}
 
@@ -1194,5 +1208,315 @@ function UserRow({ user: u, allSubs, isAr, onActivate, onBlock, onUnblock, onSet
         )}
       </td>
     </tr>
+  )
+}
+
+// ---- Ads Management Tab ----
+function AdsTab({ isAr }) {
+  const { fetchAllAds, createAd, updateAd, deleteAd, fetchAdStats, updateSetting, settings, fetchSettings } = useAdStore()
+  const [ads, setAds] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingAd, setEditingAd] = useState(null)
+  const [adStats, setAdStats] = useState({})
+  const [form, setForm] = useState({
+    type: 'banner', title: '', content: '', link_url: '', link_text: '',
+    bg_color: '#2563eb', text_color: '#ffffff', is_active: true,
+  })
+
+  useEffect(() => {
+    loadAds()
+    fetchSettings()
+  }, [])
+
+  const loadAds = async () => {
+    setLoading(true)
+    const data = await fetchAllAds()
+    setAds(data)
+    // Load stats for each ad
+    for (const ad of data) {
+      const stats = await fetchAdStats(ad.id)
+      setAdStats(prev => ({ ...prev, [ad.id]: stats }))
+    }
+    setLoading(false)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      if (editingAd) {
+        await updateAd(editingAd.id, form)
+      } else {
+        await createAd(form)
+      }
+      setShowForm(false)
+      setEditingAd(null)
+      setForm({ type: 'banner', title: '', content: '', link_url: '', link_text: '', bg_color: '#2563eb', text_color: '#ffffff', is_active: true })
+      loadAds()
+    } catch (err) { alert(err.message) }
+  }
+
+  const handleEdit = (ad) => {
+    setEditingAd(ad)
+    setForm(ad)
+    setShowForm(true)
+  }
+
+  const handleDelete = async (adId) => {
+    if (!confirm(isAr ? 'حذف هذا الإعلان؟' : 'Delete this ad?')) return
+    await deleteAd(adId)
+    loadAds()
+  }
+
+  const handleToggleActive = async (ad) => {
+    await updateAd(ad.id, { is_active: !ad.is_active })
+    loadAds()
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Scrolling text settings */}
+      <div className="card">
+        <h3 className="font-semibold mb-3">{isAr ? 'شريط النص المتحرك' : 'Scrolling Text'}</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="label">{isAr ? 'النص (عربي)' : 'Text (Arabic)'}</label>
+            <input type="text" defaultValue={settings?.scrolling_text_ar} onBlur={(e) => updateSetting('scrolling_text_ar', e.target.value)} className="input" maxLength={200} />
+          </div>
+          <div>
+            <label className="label">{isAr ? 'النص (إنجليزي)' : 'Text (English)'}</label>
+            <input type="text" defaultValue={settings?.scrolling_text_en} onBlur={(e) => updateSetting('scrolling_text_en', e.target.value)} className="input" maxLength={200} />
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" defaultChecked={settings?.scrolling_enabled === 'true'} onChange={(e) => updateSetting('scrolling_enabled', e.target.checked ? 'true' : 'false')} />
+            {isAr ? 'تفعيل الشريط المتحرك' : 'Enable scrolling text'}
+          </label>
+        </div>
+      </div>
+
+      {/* Contact settings */}
+      <div className="card">
+        <h3 className="font-semibold mb-3">{isAr ? 'روابط التواصل' : 'Contact Links'}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="label">{isAr ? 'رقم واتساب' : 'WhatsApp number'}</label>
+            <input type="text" defaultValue={settings?.whatsapp_number} onBlur={(e) => updateSetting('whatsapp_number', e.target.value)} className="input" placeholder="201234567890" dir="ltr" />
+          </div>
+          <div>
+            <label className="label">{isAr ? 'رابط تليجرام' : 'Telegram link'}</label>
+            <input type="text" defaultValue={settings?.telegram_contact} onBlur={(e) => updateSetting('telegram_contact', e.target.value)} className="input" dir="ltr" />
+          </div>
+        </div>
+      </div>
+
+      {/* Ads list */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">{isAr ? 'الإعلانات' : 'Advertisements'}</h3>
+          <button onClick={() => { setShowForm(!showForm); setEditingAd(null); setForm({ type: 'banner', title: '', content: '', link_url: '', link_text: '', bg_color: '#2563eb', text_color: '#ffffff', is_active: true }) }} className="btn-primary text-sm">
+            + {isAr ? 'إعلان جديد' : 'New Ad'}
+          </button>
+        </div>
+
+        {showForm && (
+          <form onSubmit={handleSubmit} className="mb-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label">{isAr ? 'النوع' : 'Type'}</label>
+                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="input">
+                  <option value="banner">{isAr ? 'بانر' : 'Banner'}</option>
+                  <option value="popup">{isAr ? 'نافذة منبثقة' : 'Popup'}</option>
+                  <option value="scrolling">{isAr ? 'نص متحرك' : 'Scrolling'}</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">{isAr ? 'العنوان' : 'Title'}</label>
+                <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="input" maxLength={100} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">{isAr ? 'المحتوى' : 'Content'}</label>
+                <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input min-h-[60px]" maxLength={500} />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'رابط' : 'Link URL'}</label>
+                <input type="url" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} className="input" dir="ltr" />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'نص الرابط' : 'Link text'}</label>
+                <input type="text" value={form.link_text} onChange={(e) => setForm({ ...form, link_text: e.target.value })} className="input" maxLength={50} />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'لون الخلفية' : 'BG color'}</label>
+                <input type="color" value={form.bg_color} onChange={(e) => setForm({ ...form, bg_color: e.target.value })} className="input h-10" />
+              </div>
+              <div>
+                <label className="label">{isAr ? 'لون النص' : 'Text color'}</label>
+                <input type="color" value={form.text_color} onChange={(e) => setForm({ ...form, text_color: e.target.value })} className="input h-10" />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+              {isAr ? 'مفعّل' : 'Active'}
+            </label>
+            <div className="flex gap-2">
+              <button type="submit" className="btn-primary text-sm">{isAr ? 'حفظ' : 'Save'}</button>
+              <button type="button" onClick={() => setShowForm(false)} className="btn-secondary text-sm">{isAr ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </form>
+        )}
+
+        {loading ? (
+          <p className="text-center text-gray-400 py-4">{isAr ? 'جاري التحميل...' : 'Loading...'}</p>
+        ) : ads.length === 0 ? (
+          <p className="text-center text-gray-400 py-4">{isAr ? 'لا توجد إعلانات' : 'No ads'}</p>
+        ) : (
+          <div className="space-y-2">
+            {ads.map(ad => (
+              <div key={ad.id} className={`p-3 rounded-lg border ${ad.is_active ? 'border-green-200 bg-green-50/50' : 'border-gray-200 bg-gray-50'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="badge bg-gray-200 text-gray-700">{ad.type}</span>
+                      <span className={`badge ${ad.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {ad.is_active ? (isAr ? 'مفعّل' : 'Active') : (isAr ? 'متوقف' : 'Inactive')}
+                      </span>
+                    </div>
+                    {ad.title && <p className="font-medium text-sm">{ad.title}</p>}
+                    {ad.content && <p className="text-xs text-gray-600">{ad.content.slice(0, 100)}</p>}
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                      <span>👁 {adStats[ad.id]?.views || ad.views || 0} {isAr ? 'مشاهدة' : 'views'}</span>
+                      <span>🚫 {ad.dismissals || 0} {isAr ? 'إغلاق' : 'dismissals'}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleToggleActive(ad)} className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
+                      {ad.is_active ? (isAr ? 'إيقاف' : 'Disable') : (isAr ? 'تفعيل' : 'Enable')}
+                    </button>
+                    <button onClick={() => handleEdit(ad)} className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
+                      {isAr ? 'تعديل' : 'Edit'}
+                    </button>
+                    <button onClick={() => handleDelete(ad.id)} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Visitor count offset */}
+      <div className="card">
+        <h3 className="font-semibold mb-3">{isAr ? 'عداد الزيارات' : 'Visitor Count'}</h3>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="label">{isAr ? 'رقم ابتدائي (للعرض)' : 'Starting number (display)'}</label>
+            <input type="number" defaultValue={settings?.visitor_count_offset} onBlur={(e) => updateSetting('visitor_count_offset', e.target.value)} className="input" />
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">{isAr ? 'يُضاف هذا الرقم للزيارات الفعلية لعرض عدد أكبر' : 'This number is added to actual visits to show a larger count'}</p>
+      </div>
+    </div>
+  )
+}
+
+// ---- Messages Tab ----
+function MessagesTab({ isAr }) {
+  const { fetchMessages, replyMessage } = useAdStore()
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [replyingTo, setReplyingTo] = useState(null)
+  const [replyText, setReplyText] = useState('')
+
+  useEffect(() => { loadMessages() }, [])
+
+  const loadMessages = async () => {
+    setLoading(true)
+    const data = await fetchMessages()
+    setMessages(data)
+    setLoading(false)
+  }
+
+  const handleReply = async (msgId) => {
+    if (!replyText.trim()) return
+    await replyMessage(msgId, replyText)
+    setReplyingTo(null)
+    setReplyText('')
+    loadMessages()
+  }
+
+  if (loading) return <p className="text-center text-gray-400 py-8">{isAr ? 'جاري التحميل...' : 'Loading...'}</p>
+
+  return (
+    <div className="space-y-3">
+      {messages.length === 0 && <p className="text-center text-gray-400 py-8">{isAr ? 'لا توجد رسائل' : 'No messages'}</p>}
+      {messages.map(msg => (
+        <div key={msg.id} className={`card ${msg.status === 'unread' ? 'border-blue-300 bg-blue-50/30' : ''}`}>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <p className="font-medium text-sm">{msg.user_name} <span className="text-gray-400 text-xs">({msg.user_email})</span></p>
+              <p className="text-xs text-gray-500">{msg.subject}</p>
+            </div>
+            <span className={`badge ${msg.status === 'unread' ? 'bg-blue-100 text-blue-700' : msg.status === 'replied' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              {msg.status}
+            </span>
+          </div>
+          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{msg.message}</p>
+          <p className="text-xs text-gray-400">{new Date(msg.created_at).toLocaleString()}</p>
+
+          {msg.admin_reply && (
+            <div className="mt-2 p-2 rounded bg-green-50 text-sm">
+              <p className="text-xs font-medium text-green-700">{isAr ? 'رد الإدارة:' : 'Admin reply:'}</p>
+              <p className="text-green-800">{msg.admin_reply}</p>
+            </div>
+          )}
+
+          {msg.status !== 'replied' && (
+            replyingTo === msg.id ? (
+              <div className="mt-2 space-y-2">
+                <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} className="input min-h-[60px]" placeholder={isAr ? 'اكتب ردك...' : 'Write your reply...'} />
+                <div className="flex gap-2">
+                  <button onClick={() => handleReply(msg.id)} className="btn-primary text-sm">{isAr ? 'إرسال' : 'Send'}</button>
+                  <button onClick={() => { setReplyingTo(null); setReplyText('') }} className="btn-secondary text-sm">{isAr ? 'إلغاء' : 'Cancel'}</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setReplyingTo(msg.id)} className="btn-outline text-sm mt-2">
+                {isAr ? 'رد' : 'Reply'}
+              </button>
+            )
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ---- Visitors Tab ----
+function VisitorsTab({ isAr }) {
+  const { fetchVisitorStats } = useAdStore()
+  const [stats, setStats] = useState({ total: 0, today: 0, uniqueIPs: 0 })
+
+  useEffect(() => {
+    fetchVisitorStats().then(setStats)
+  }, [])
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="card text-center">
+        <Eye size={24} className="mx-auto text-blue-600 mb-2" />
+        <div className="text-2xl font-bold">{stats.total.toLocaleString()}</div>
+        <div className="text-sm text-gray-500">{isAr ? 'إجمالي الزيارات' : 'Total visits'}</div>
+      </div>
+      <div className="card text-center">
+        <div className="text-2xl font-bold text-green-600">{stats.today.toLocaleString()}</div>
+        <div className="text-sm text-gray-500">{isAr ? 'زيارات اليوم' : 'Today'}</div>
+      </div>
+      <div className="card text-center">
+        <div className="text-2xl font-bold text-purple-600">{stats.uniqueIPs.toLocaleString()}</div>
+        <div className="text-sm text-gray-500">{isAr ? 'IP فريدة' : 'Unique IPs'}</div>
+      </div>
+    </div>
   )
 }
