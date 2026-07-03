@@ -314,6 +314,18 @@ export default function AdminPage() {
     }
   }
 
+  // Approve a flagged CV (remove flag)
+  const handleApproveCV = async (cvId) => {
+    try {
+      const { error } = await supabase.from('cvs').update({ is_flagged: false, flag_reason: '' }).eq('id', cvId)
+      if (error) throw error
+      alert(isAr ? 'تمت الموافقة على السي في — أُزيلت العلامة' : 'CV approved — flag removed')
+      loadAllData()
+    } catch (err) {
+      alert(err.message)
+    }
+  }
+
   // View CV details
   const [viewingCV, setViewingCV] = useState(null)
 
@@ -924,6 +936,15 @@ export default function AdminPage() {
                             >
                               <Trash2 size={12} /> {isAr ? 'حذف' : 'Delete'}
                             </button>
+                            {cv.is_flagged && (
+                              <button
+                                onClick={() => handleApproveCV(cv.id)}
+                                className="text-xs text-white bg-green-600 hover:bg-green-700 px-2 py-1 rounded flex items-center gap-1"
+                                title={isAr ? 'موافقة وإزالة العلامة' : 'Approve and remove flag'}
+                              >
+                                <Check size={12} /> {isAr ? 'موافقة' : 'Approve'}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1025,6 +1046,14 @@ export default function AdminPage() {
 
               {/* Actions */}
               <div className="flex gap-2 mt-4 justify-end">
+                {viewingCV.is_flagged && (
+                  <button
+                    onClick={() => handleApproveCV(viewingCV.id)}
+                    className="btn bg-green-600 text-white hover:bg-green-700 text-sm"
+                  >
+                    <Check size={16} /> {isAr ? 'موافقة وإزالة العلامة' : 'Approve (remove flag)'}
+                  </button>
+                )}
                 <button
                   onClick={() => handleDeleteCV(viewingCV.id, viewingCV.title || 'Untitled')}
                   className="btn bg-red-600 text-white hover:bg-red-700 text-sm"
