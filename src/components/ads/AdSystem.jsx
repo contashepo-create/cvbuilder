@@ -44,7 +44,12 @@ export default function AdSystem() {
   }, [ads])
 
   // Filter out dismissed ads (safe defaults)
-  const visibleAds = (ads || []).filter(ad => !dismissedAds.includes(ad.id))
+  // Popup ads only show to logged-in users; banners and scrolling show to everyone
+  const visibleAds = (ads || []).filter(ad => {
+    if (dismissedAds.includes(ad.id)) return false
+    if (ad.type === 'popup' && !user) return false
+    return true
+  })
 
   // Separate by type
   const scrollingAds = visibleAds.filter(a => a.type === 'scrolling')
