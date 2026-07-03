@@ -139,11 +139,13 @@ export const useCVStore = create((set, get) => ({
     const originalFingerprint = currentCV.content_fingerprint || ''
     const comparison = compareFingerprints(originalFingerprint, currentFingerprint)
 
-    let isFlagged = currentCV.is_flagged || false
-    let flagReason = currentCV.flag_reason || ''
+    // If admin approved this CV, don't re-flag it (unless new violation)
+    const adminApproved = currentCV.admin_approved || false
+    let isFlagged = adminApproved ? false : (currentCV.is_flagged || false)
+    let flagReason = adminApproved ? '' : (currentCV.flag_reason || '')
     let cheatWarning = null
 
-    if (comparison.isDifferent) {
+    if (comparison.isDifferent && !adminApproved) {
       isFlagged = true
       flagReason = comparison.confidence >= 1.0
         ? 'CV_PERSON_CHANGED: Personal info significantly different from creation'
@@ -156,8 +158,8 @@ export const useCVStore = create((set, get) => ({
       }
     }
 
-    // Check against profile owner
-    if (profile) {
+    // Check against profile owner (skip if admin approved)
+    if (profile && !adminApproved) {
       const differentPerson = isDifferentPerson(currentCV.content, profile)
       if (differentPerson) {
         isFlagged = true

@@ -314,12 +314,15 @@ export default function AdminPage() {
     }
   }
 
-  // Approve a flagged CV (remove flag)
+  // Approve a flagged CV (remove flag permanently)
   const handleApproveCV = async (cvId) => {
     try {
-      const { error } = await supabase.from('cvs').update({ is_flagged: false, flag_reason: '' }).eq('id', cvId)
+      const { error } = await supabase.from('cvs').update({ is_flagged: false, flag_reason: '', admin_approved: true }).eq('id', cvId)
       if (error) throw error
-      alert(isAr ? 'تمت الموافقة على السي في — أُزيلت العلامة' : 'CV approved — flag removed')
+      alert(isAr ? '✅ تمت الموافقة على السي في — أُزيلت العلامة نهائياً' : '✅ CV approved — flag removed permanently')
+      if (viewingCV && viewingCV.id === cvId) {
+        setViewingCV({ ...viewingCV, is_flagged: false, flag_reason: '', admin_approved: true })
+      }
       loadAllData()
     } catch (err) {
       alert(err.message)
