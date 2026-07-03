@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useCVStore } from '../store/cvStore'
 import { useAuthStore } from '../store/authStore'
-import { BUILDER_STEPS } from '../constants/sections'
+import { BUILDER_STEPS, FIXED_STEPS } from '../constants/sections'
 import Spinner from '../components/ui/Spinner'
 import TemplatePicker from '../components/builder/TemplatePicker'
 import TemplateRenderer from '../components/builder/templates/TemplateRenderer'
@@ -120,7 +120,7 @@ export default function BuilderPage() {
     )
   }
 
-  const step = BUILDER_STEPS[currentStep]
+  const step = BUILDER_STEPS[currentStep] || FIXED_STEPS[0]
   const StepComponent = stepComponents[step.id]
   const isFirstStep = currentStep === 0
   const isLastStep = currentStep === BUILDER_STEPS.length - 1
@@ -232,8 +232,12 @@ export default function BuilderPage() {
           <div className="card">
             {step.id === 'sectionOrder' ? (
               <SectionOrderStep
-                sectionOrder={content.sectionOrder || []}
-                onChange={handleSectionOrderChange}
+                content={content}
+                onChange={(newContent) => {
+                  updateContent(newContent)
+                  if (saveTimer.current) clearTimeout(saveTimer.current)
+                  saveTimer.current = setTimeout(() => saveCV(profile), 2000)
+                }}
               />
             ) : (
               <StepComponent
