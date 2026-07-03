@@ -14,14 +14,14 @@ export default function ProfessionalTemplate({ content }) {
       case 'summary':
         return (
           <section key="summary" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-700 border-b border-teal-200 pb-1 mb-2">{t('builder.sections.summary')}</h2>
+            <h2 className="text-xs font-bold text-teal-700 border-b border-teal-200 pb-1 mb-2">{t('builder.sections.summary')}</h2>
             <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
           </section>
         )
       case 'experience':
         return (
           <section key="experience" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-700 border-b border-teal-200 pb-1 mb-3">{t('builder.sections.experience')}</h2>
+            <h2 className="text-xs font-bold text-teal-700 border-b border-teal-200 pb-1 mb-3">{t('builder.sections.experience')}</h2>
             <div className="space-y-3">
               {experience.map((exp) => (
                 <div key={exp.id}>
@@ -39,7 +39,7 @@ export default function ProfessionalTemplate({ content }) {
       case 'education':
         return (
           <section key="education" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-700 border-b border-teal-200 pb-1 mb-3">{t('builder.sections.education')}</h2>
+            <h2 className="text-xs font-bold text-teal-700 border-b border-teal-200 pb-1 mb-3">{t('builder.sections.education')}</h2>
             <div className="space-y-2">
               {education.map((edu) => (
                 <div key={edu.id}>
@@ -56,7 +56,7 @@ export default function ProfessionalTemplate({ content }) {
       case 'projects':
         return (
           <section key="projects" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-700 border-b border-teal-200 pb-1 mb-3">{t('builder.sections.projects')}</h2>
+            <h2 className="text-xs font-bold text-teal-700 border-b border-teal-200 pb-1 mb-3">{t('builder.sections.projects')}</h2>
             <div className="space-y-2">
               {projects.map((proj) => (
                 <div key={proj.id} className="text-sm">
@@ -78,7 +78,7 @@ export default function ProfessionalTemplate({ content }) {
       case 'skills':
         return (
           <div key="skills" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">{t('builder.sections.skills')}</h2>
+            <h2 className="text-xs font-bold text-teal-300 mb-2">{t('builder.sections.skills')}</h2>
             <div className="space-y-1.5">
               {skills.map((skill) => (
                 <div key={skill.id}>
@@ -97,7 +97,7 @@ export default function ProfessionalTemplate({ content }) {
       case 'languages':
         return (
           <div key="languages" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">{t('builder.sections.languages')}</h2>
+            <h2 className="text-xs font-bold text-teal-300 mb-2">{t('builder.sections.languages')}</h2>
             <div className="space-y-1 text-xs">
               {languages.map((lang) => (
                 <div key={lang.id} className="flex justify-between">
@@ -111,7 +111,7 @@ export default function ProfessionalTemplate({ content }) {
       case 'certifications':
         return (
           <div key="certifications" className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">{t('builder.sections.certifications')}</h2>
+            <h2 className="text-xs font-bold text-teal-300 mb-2">{t('builder.sections.certifications')}</h2>
             <div className="space-y-1 text-xs">
               {certifications.map((cert) => (
                 <div key={cert.id}>
@@ -135,7 +135,7 @@ export default function ProfessionalTemplate({ content }) {
             <img src={personalInfo.photo} alt="" className="w-20 h-20 rounded-full mx-auto mb-4 object-cover border-2 border-teal-400" />
           )}
           <div className="mb-5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-teal-300 mb-2">{t('builder.fields.contact') || 'Contact'}</h2>
+            <h2 className="text-xs font-bold text-teal-300 mb-2">{t('builder.fields.contact') || 'Contact'}</h2>
             <div className="space-y-1.5 text-xs text-teal-100">
               {personalInfo?.email && <div className="flex items-center gap-1.5"><Mail size={11} /> {personalInfo.email}</div>}
               {personalInfo?.phone && <div className="flex items-center gap-1.5"><Phone size={11} /> {personalInfo.phone}</div>}

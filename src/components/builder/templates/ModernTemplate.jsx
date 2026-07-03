@@ -28,16 +28,16 @@ export default function ModernTemplate({ content }) {
       case 'summary':
         return summary?.trim() ? (
           <section key="summary" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-2">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-2">
               {t('builder.sections.summary')}
             </h2>
-            <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+            <p className="text-sm text-gray-700 leading-loose">{summary}</p>
           </section>
         ) : null
       case 'experience':
         return experience?.length > 0 ? (
           <section key="experience" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-3">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-3">
               {t('builder.sections.experience')}
             </h2>
             <div className="space-y-4">
@@ -59,7 +59,7 @@ export default function ModernTemplate({ content }) {
       case 'education':
         return education?.length > 0 ? (
           <section key="education" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-3">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-3">
               {t('builder.sections.education')}
             </h2>
             <div className="space-y-3">
@@ -81,7 +81,7 @@ export default function ModernTemplate({ content }) {
       case 'skills':
         return skills?.length > 0 ? (
           <section key="skills" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-3">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-3">
               {t('builder.sections.skills')}
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -96,7 +96,7 @@ export default function ModernTemplate({ content }) {
       case 'languages':
         return languages?.length > 0 ? (
           <section key="languages" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-3">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-3">
               {t('builder.sections.languages')}
             </h2>
             <div className="grid grid-cols-2 gap-2">
@@ -112,7 +112,7 @@ export default function ModernTemplate({ content }) {
       case 'certifications':
         return certifications?.length > 0 ? (
           <section key="certifications" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-3">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-3">
               {t('builder.sections.certifications')}
             </h2>
             <div className="space-y-2">
@@ -131,7 +131,7 @@ export default function ModernTemplate({ content }) {
       case 'projects':
         return projects?.length > 0 ? (
           <section key="projects" className="mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-primary-600 border-b border-primary-200 pb-1 mb-3">
+            <h2 className="text-sm font-bold text-primary-600 border-b-2 border-primary-200 pb-1 mb-3">
               {t('builder.sections.projects')}
             </h2>
             <div className="space-y-3">
@@ -168,7 +168,7 @@ export default function ModernTemplate({ content }) {
             <img src={personalInfo.photo} alt="" className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
           )}
           <div className="mb-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-primary-600 mb-2">
+            <h2 className="text-xs font-bold text-primary-600 mb-2">
               {t('builder.fields.contact') || 'Contact'}
             </h2>
             <div className="space-y-1.5 text-xs text-gray-600">
@@ -188,7 +188,7 @@ export default function ModernTemplate({ content }) {
 
           {skills?.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-primary-600 mb-2">
+              <h2 className="text-xs font-bold text-primary-600 mb-2">
                 {t('builder.sections.skills')}
               </h2>
               <div className="space-y-1.5">
@@ -211,7 +211,7 @@ export default function ModernTemplate({ content }) {
 
           {languages?.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-primary-600 mb-2">
+              <h2 className="text-xs font-bold text-primary-600 mb-2">
                 {t('builder.sections.languages')}
               </h2>
               <div className="space-y-1 text-xs">

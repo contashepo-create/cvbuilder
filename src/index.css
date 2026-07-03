@@ -10,10 +10,17 @@
   /* RTL & LTR support */
   [dir="rtl"] {
     text-align: right;
+    font-feature-settings: "kern";
+    -webkit-font-smoothing: antialiased;
   }
 
   [dir="ltr"] {
     text-align: left;
+  }
+
+  /* CV templates: force Cairo font for proper Arabic rendering */
+  .cv-printable, .cv-printable * {
+    font-family: 'Cairo', 'Inter', system-ui, sans-serif !important;
   }
 }
 

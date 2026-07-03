@@ -19,7 +19,7 @@ export default function MinimalTemplate({ content }) {
       case 'experience':
         return (
           <section key="experience" className="mb-8">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">{t('builder.sections.experience')}</h2>
+            <h2 className="text-xs text-gray-400 mb-3">{t('builder.sections.experience')}</h2>
             <div className="space-y-4">
               {experience.map((exp) => (
                 <div key={exp.id} className="border-s border-gray-200 ps-4">
@@ -37,7 +37,7 @@ export default function MinimalTemplate({ content }) {
       case 'education':
         return (
           <section key="education" className="mb-8">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">{t('builder.sections.education')}</h2>
+            <h2 className="text-xs text-gray-400 mb-3">{t('builder.sections.education')}</h2>
             <div className="space-y-3">
               {education.map((edu) => (
                 <div key={edu.id} className="border-s border-gray-200 ps-4">
@@ -54,7 +54,7 @@ export default function MinimalTemplate({ content }) {
       case 'skills':
         return (
           <section key="skills" className="mb-8">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">{t('builder.sections.skills')}</h2>
+            <h2 className="text-xs text-gray-400 mb-3">{t('builder.sections.skills')}</h2>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-700">
               {skills.map((s, i) => (
                 <span key={s.id}>{s.name}{i < skills.length - 1 ? ',' : ''}</span>
@@ -65,7 +65,7 @@ export default function MinimalTemplate({ content }) {
       case 'languages':
         return (
           <section key="languages" className="mb-8">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">{t('builder.sections.languages')}</h2>
+            <h2 className="text-xs text-gray-400 mb-3">{t('builder.sections.languages')}</h2>
             <div className="text-sm space-y-0.5 text-gray-700">
               {languages.map((lang) => (
                 <div key={lang.id}>{lang.name} — <span className="text-gray-400">{t(`builder.levels.${lang.level}`)}</span></div>
@@ -76,7 +76,7 @@ export default function MinimalTemplate({ content }) {
       case 'certifications':
         return (
           <section key="certifications" className="mb-8">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">{t('builder.sections.certifications')}</h2>
+            <h2 className="text-xs text-gray-400 mb-3">{t('builder.sections.certifications')}</h2>
             <div className="space-y-1 text-sm text-gray-700">
               {certifications.map((cert) => (
                 <div key={cert.id}>{cert.name} — {cert.issuer} <span className="text-gray-400">({formatDate(cert.date)})</span></div>
@@ -87,7 +87,7 @@ export default function MinimalTemplate({ content }) {
       case 'projects':
         return (
           <section key="projects" className="mb-8">
-            <h2 className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">{t('builder.sections.projects')}</h2>
+            <h2 className="text-xs text-gray-400 mb-3">{t('builder.sections.projects')}</h2>
             <div className="space-y-2">
               {projects.map((proj) => (
                 <div key={proj.id} className="text-sm">

@@ -14,25 +14,51 @@ export async function exportToPDF(element, filename = 'CV.pdf', fitToOnePage = f
     return
   }
 
-  // Sanitize filename to prevent XSS
   const safeFilename = escapeHTML(filename).replace(/[<>:"/\\|?*]/g, '_')
 
-  // Store original styles
-  const originalTransform = element.style.transform
-  const originalWidth = element.style.width
-  const originalMaxWidth = element.style.maxWidth
+  // Wait for fonts to load
+  try {
+    await document.fonts.ready
+  } catch {}
 
-  // Expand for rendering
-  element.style.transform = 'none'
-  element.style.width = '800px'
-  element.style.maxWidth = '800px'
+  // Clone the element to avoid modifying the visible one
+  const clone = element.cloneNode(true)
+  const wrapper = document.createElement('div')
+  wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; width:794px; background:#fff;'
+  wrapper.appendChild(clone)
+  document.body.appendChild(wrapper)
+
+  // Force inline styles on the clone for html2canvas compatibility
+  const ensureStyles = (el) => {
+    // Replace gap with margins on children (html2canvas doesn't support gap)
+    if (el.style?.gap) {
+      const gap = el.style.gap
+      const children = Array.from(el.children)
+      children.forEach((child, i) => {
+        if (i > 0) {
+          child.style.marginInlineStart = gap
+          child.style.marginBlockStart = gap
+        }
+      })
+    }
+    // Ensure flex works
+    if (getComputedStyle(el).display === 'flex') {
+      el.style.display = 'flex'
+    }
+    // Process children
+    el.children && Array.from(el.children).forEach(ensureStyles)
+  }
+  ensureStyles(clone)
 
   try {
-    const canvas = await html2canvas(element, {
+    const canvas = await html2canvas(clone, {
       scale: 2,
       useCORS: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
+      windowWidth: 794,
+      windowHeight: clone.scrollHeight,
     })
 
     const imgWidth = 210 // A4 width in mm
@@ -42,25 +68,33 @@ export async function exportToPDF(element, filename = 'CV.pdf', fitToOnePage = f
     const pdf = new jsPDF('p', 'mm', 'a4')
 
     if (fitToOnePage && imgHeight > pageHeight) {
-      // Scale to fit one page
       const scaledWidth = (imgWidth * pageHeight) / imgHeight
       const xOffset = (imgWidth - scaledWidth) / 2
       const imgData = canvas.toDataURL('image/png')
       pdf.addImage(imgData, 'PNG', xOffset, 0, scaledWidth, pageHeight)
     } else {
       // Multi-page: slice canvas across pages
-      let heightLeft = imgHeight
-      let position = 0
+      const canvasWidth = canvas.width
+      const canvasHeight = canvas.height
+      const pageHeightPx = (canvasWidth * pageHeight) / imgWidth
+      let yPos = 0
+      let pageNum = 0
 
-      const imgData = canvas.toDataURL('image/png')
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
+      while (yPos < canvasHeight) {
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = canvasWidth
+        sliceCanvas.height = Math.min(pageHeightPx, canvasHeight - yPos)
+        const ctx = sliceCanvas.getContext('2d')
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
+        ctx.drawImage(canvas, 0, yPos, canvasWidth, sliceCanvas.height, 0, 0, canvasWidth, sliceCanvas.height)
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+        const imgData = sliceCanvas.toDataURL('image/jpeg', 0.92)
+        if (pageNum > 0) pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, (sliceCanvas.height * imgWidth) / canvasWidth)
+
+        yPos += pageHeightPx
+        pageNum++
       }
     }
 
@@ -69,9 +103,6 @@ export async function exportToPDF(element, filename = 'CV.pdf', fitToOnePage = f
     console.error('PDF export error:', error)
     throw error
   } finally {
-    // Restore original styles
-    element.style.transform = originalTransform
-    element.style.width = originalWidth
-    element.style.maxWidth = originalMaxWidth
+    document.body.removeChild(wrapper)
   }
 }

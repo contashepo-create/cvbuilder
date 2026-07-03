@@ -13,14 +13,14 @@ export default function ClassicTemplate({ content }) {
       case 'summary':
         return (
           <section key="summary" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.summary')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.summary')}</h2>
             <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
           </section>
         )
       case 'experience':
         return (
           <section key="experience" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-3">{t('builder.sections.experience')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-3">{t('builder.sections.experience')}</h2>
             <div className="space-y-3">
               {experience.map((exp) => (
                 <div key={exp.id}>
@@ -37,7 +37,7 @@ export default function ClassicTemplate({ content }) {
       case 'education':
         return (
           <section key="education" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-3">{t('builder.sections.education')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-3">{t('builder.sections.education')}</h2>
             <div className="space-y-2">
               {education.map((edu) => (
                 <div key={edu.id}>
@@ -54,14 +54,14 @@ export default function ClassicTemplate({ content }) {
       case 'skills':
         return (
           <section key="skills" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.skills')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.skills')}</h2>
             <p className="text-sm text-gray-700">{skills.map((s) => s.name).join(' • ')}</p>
           </section>
         )
       case 'languages':
         return (
           <section key="languages" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.languages')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.languages')}</h2>
             <div className="text-sm space-y-0.5">
               {languages.map((lang) => (
                 <div key={lang.id} className="flex justify-between max-w-xs">
@@ -74,7 +74,7 @@ export default function ClassicTemplate({ content }) {
       case 'certifications':
         return (
           <section key="certifications" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.certifications')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.certifications')}</h2>
             <div className="space-y-1">
               {certifications.map((cert) => (
                 <div key={cert.id} className="text-sm flex justify-between">
@@ -88,7 +88,7 @@ export default function ClassicTemplate({ content }) {
       case 'projects':
         return (
           <section key="projects" className="mb-5">
-            <h2 className="text-sm font-bold uppercase border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.projects')}</h2>
+            <h2 className="text-sm font-bold border-b-2 border-gray-800 pb-1 mb-2">{t('builder.sections.projects')}</h2>
             <div className="space-y-2">
               {projects.map((proj) => (
                 <div key={proj.id} className="text-sm">
