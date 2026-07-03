@@ -46,18 +46,9 @@ export const useAuthStore = create((set, get) => ({
     }
 
     try {
-      // Set a timeout — if Supabase doesn't respond in 10s, stop loading
-      const timeout = setTimeout(() => {
-        const state = get()
-        if (state.loading) {
-          set({ loading: false, error: 'Timeout' })
-        }
-      }, 10000)
-
       const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
-        clearTimeout(timeout)
         set({ user: null, profile: null, session: null, isAdmin: false, loading: false })
         return
       }
@@ -114,7 +105,6 @@ export const useAuthStore = create((set, get) => ({
         console.error('Admin check failed:', e)
       }
 
-      clearTimeout(timeout)
       set({ user, profile: finalProfile, session, isAdmin: admin, loading: false })
     } catch (error) {
       console.error('Auth init error:', error)
@@ -310,32 +300,26 @@ export const useAuthStore = create((set, get) => ({
 
 // Listen to auth state changes (only in real mode)
 if (!DEMO_MODE) {
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       useAuthStore.setState({ user: null, profile: null, session: null, isAdmin: false, loading: false })
-    } else if (event === 'SIGNED_IN' && session) {
-      // Set user + session + stop loading immediately
-      useAuthStore.setState({ user: session.user, session, loading: false })
-      // Fetch profile in background
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-        // Update last_seen (non-blocking)
-        try {
-          await supabase.from('profiles')
-            .update({ last_seen: new Date().toISOString() })
-            .eq('id', session.user.id)
-        } catch {}
-        // Check admin
-        let admin = false
-        try { admin = await isAdminEmail(session.user.email) } catch {}
-        useAuthStore.setState({ profile, isAdmin: admin, loading: false })
-      } catch (e) {
-        console.error('Profile fetch on auth change failed:', e)
-        useAuthStore.setState({ loading: false })
+    } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+      if (!session) {
+        useAuthStore.setState({ user: null, profile: null, session: null, isAdmin: false, loading: false })
+      } else {
+        useAuthStore.setState({ user: session.user, session, loading: false })
+        // Fetch profile in background
+        supabase.from('profiles').select('*').eq('id', session.user.id).single()
+          .then(({ data: profile }) => {
+            useAuthStore.setState({ profile })
+            // Check admin
+            isAdminEmail(session.user.email)
+              .then(admin => useAuthStore.setState({ isAdmin: admin }))
+              .catch(() => {})
+            // Update last_seen
+            supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', session.user.id).catch(() => {})
+          })
+          .catch(() => {})
       }
     }
   })

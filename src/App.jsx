@@ -39,10 +39,10 @@ export default function App() {
     const page = location.pathname
     try {
       trackVisit(page, user?.id, user?.email)
+    } catch (e) {}
+    try {
       fetchVisitorCount()
-    } catch (e) {
-      console.error('Visit tracking failed:', e)
-    }
+    } catch (e) {}
   }, [location.pathname])
 
   return (
