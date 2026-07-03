@@ -5,10 +5,12 @@ import { createEmptySkill } from '../../../lib/cvDefaults'
 import { SKILL_LEVELS } from '../../../constants/sections'
 import { useAIStore } from '../../../store/aiStore'
 import { aiSuggestSkills } from '../../../lib/aiService'
+import { getCVLabels } from '../templates/cvHelpers'
 
-export default function SkillsStep({ data, onChange, personalInfo }) {
-  const { t, i18n } = useTranslation()
-  const isAr = i18n.language === 'ar'
+export default function SkillsStep({ data, onChange, personalInfo, cvLanguage = 'ar' }) {
+  const { t } = useTranslation()
+  const labels = getCVLabels(cvLanguage)
+  const isAr = cvLanguage === 'ar'
   const jobTitle = personalInfo?.jobTitle || ''
   const { isConfigured, enabled, features } = useAIStore()
   const [aiLoading, setAiLoading] = useState(false)
@@ -31,13 +33,12 @@ export default function SkillsStep({ data, onChange, personalInfo }) {
     setAiError('')
     setAiLoading(true)
     try {
-      const skills = await aiSuggestSkills(jobTitle || 'professional', i18n.language)
+      const skills = await aiSuggestSkills(jobTitle || 'professional', cvLanguage)
       const newSkills = skills.map((s) => ({
         id: crypto.randomUUID(),
         name: s,
         level: 'intermediate',
       }))
-      // Merge with existing, avoiding duplicates
       const existingNames = data.map((d) => d.name.toLowerCase())
       const uniqueNew = newSkills.filter((s) => !existingNames.includes(s.name.toLowerCase()))
       onChange([...data, ...uniqueNew])
@@ -73,7 +74,7 @@ export default function SkillsStep({ data, onChange, personalInfo }) {
         <div key={item.id} className="flex items-end gap-3">
           <div className="flex-1">
             <label className="label">
-              {t('builder.fields.skill_name')} #{index + 1}
+              {labels.skills} #{index + 1}
             </label>
             <input
               type="text"
@@ -81,11 +82,10 @@ export default function SkillsStep({ data, onChange, personalInfo }) {
               onChange={(e) => updateItem(item.id, 'name', e.target.value)}
               className="input"
               maxLength={50}
-              placeholder="JavaScript, Photoshop, ..."
             />
           </div>
           <div className="w-40">
-            <label className="label">{t('builder.fields.level')}</label>
+            <label className="label">{labels.beginner ? (isAr ? 'المستوى' : 'Level') : (isAr ? 'المستوى' : 'Level')}</label>
             <select
               value={item.level}
               onChange={(e) => updateItem(item.id, 'level', e.target.value)}
@@ -93,7 +93,7 @@ export default function SkillsStep({ data, onChange, personalInfo }) {
             >
               {SKILL_LEVELS.map((level) => (
                 <option key={level} value={level}>
-                  {t(`builder.levels.${level}`)}
+                  {labels[level] || level}
                 </option>
               ))}
             </select>
@@ -105,7 +105,7 @@ export default function SkillsStep({ data, onChange, personalInfo }) {
       ))}
 
       <button onClick={() => addItem()} className="btn-outline w-full">
-        <Plus size={18} /> {t('builder.fields.add_item')}
+        <Plus size={18} /> {labels.add_item}
       </button>
     </div>
   )

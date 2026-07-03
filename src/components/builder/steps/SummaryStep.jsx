@@ -5,7 +5,7 @@ import { matchProfession, getSuggestions } from '../../../constants/summarySugge
 import { useAIStore } from '../../../store/aiStore'
 import { aiSuggestSummary, aiImproveSummary } from '../../../lib/aiService'
 
-export default function SummaryStep({ data, onChange, personalInfo }) {
+export default function SummaryStep({ data, onChange, personalInfo, cvLanguage = "ar" }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
   const jobTitle = personalInfo?.jobTitle || ''

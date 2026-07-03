@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useCVStore } from '../store/cvStore'
 import { useAuthStore } from '../store/authStore'
 import { BUILDER_STEPS, FIXED_STEPS } from '../constants/sections'
+import { getCVLabels } from '../components/builder/templates/cvHelpers'
 import Spinner from '../components/ui/Spinner'
 import TemplatePicker from '../components/builder/TemplatePicker'
 import TemplateRenderer from '../components/builder/templates/TemplateRenderer'
@@ -121,6 +122,7 @@ export default function BuilderPage() {
   }
 
   const step = BUILDER_STEPS[currentStep] || FIXED_STEPS[0]
+  const cvLabels = getCVLabels(content?.cvLanguage || 'ar')
   const StepComponent = stepComponents[step.id]
   const isFirstStep = currentStep === 0
   const isLastStep = currentStep === BUILDER_STEPS.length - 1
@@ -225,7 +227,7 @@ export default function BuilderPage() {
 
           <div className="mb-2">
             <h2 className="text-lg font-semibold">
-              {t('builder.step')} {currentStep + 1} {t('builder.of')} {BUILDER_STEPS.length}: {t(`builder.sections.${step.key}`)}
+              {t('builder.step')} {currentStep + 1} {t('builder.of')} {BUILDER_STEPS.length}: {cvLabels[step.key] || step.key}
             </h2>
           </div>
 
@@ -243,6 +245,7 @@ export default function BuilderPage() {
               <StepComponent
                 data={content[step.id]}
                 onChange={(value) => handleContentChange(step.id, value)}
+                cvLanguage={content?.cvLanguage || 'ar'}
               />
             )}
           </div>

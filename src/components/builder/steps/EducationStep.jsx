@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, GraduationCap } from 'lucide-react'
 import { createEmptyEducation } from '../../../lib/cvDefaults'
 
-export default function EducationStep({ data, onChange }) {
+export default function EducationStep({ data, onChange, cvLanguage = "ar" }) {
   const { t } = useTranslation()
 
   const addItem = () => onChange([...data, createEmptyEducation()])

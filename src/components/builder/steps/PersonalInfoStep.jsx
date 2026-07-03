@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mail, Phone, MapPin, Linkedin, Github, Globe, User, Briefcase, Upload, X, Camera } from 'lucide-react'
 
-export default function PersonalInfoStep({ data, onChange }) {
+export default function PersonalInfoStep({ data, onChange, cvLanguage = "ar" }) {
   const { t } = useTranslation()
   const fileRef = useRef(null)
   const [photoError, setPhotoError] = useState('')

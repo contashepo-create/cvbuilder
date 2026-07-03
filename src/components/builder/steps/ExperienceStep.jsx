@@ -6,7 +6,7 @@ import { useAIStore } from '../../../store/aiStore'
 import { aiImproveExperienceDescription } from '../../../lib/aiService'
 import Spinner from '../../ui/Spinner'
 
-export default function ExperienceStep({ data, onChange }) {
+export default function ExperienceStep({ data, onChange, cvLanguage = "ar" }) {
   const { t, i18n } = useTranslation()
   const isAr = i18n.language === 'ar'
   const { isConfigured, enabled, features } = useAIStore()

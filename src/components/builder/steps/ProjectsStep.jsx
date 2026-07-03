@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, FolderGit2 } from 'lucide-react'
 import { createEmptyProject } from '../../../lib/cvDefaults'
 
-export default function ProjectsStep({ data, onChange }) {
+export default function ProjectsStep({ data, onChange, cvLanguage = "ar" }) {
   const { t } = useTranslation()
 
   const addItem = () => onChange([...data, createEmptyProject()])

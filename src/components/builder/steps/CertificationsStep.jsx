@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, Award } from 'lucide-react'
 import { createEmptyCertification } from '../../../lib/cvDefaults'
 
-export default function CertificationsStep({ data, onChange }) {
+export default function CertificationsStep({ data, onChange, cvLanguage = "ar" }) {
   const { t } = useTranslation()
 
   const addItem = () => onChange([...data, createEmptyCertification()])
