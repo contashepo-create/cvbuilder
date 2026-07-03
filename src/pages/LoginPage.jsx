@@ -149,6 +149,12 @@ export default function LoginPage() {
               {fieldErrors.password && <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>}
             </div>
 
+            <div className="text-end mt-1">
+              <Link to="/forgot-password" className="text-xs text-primary-600 hover:underline">
+                {t('auth.forgot_password') || 'نسيت كلمة المرور؟'}
+              </Link>
+            </div>
+
             {/* Captcha — shows after first failed attempt */}
             {failedAttempts >= 1 && (
               <Captcha onVerify={setCaptchaToken} />
