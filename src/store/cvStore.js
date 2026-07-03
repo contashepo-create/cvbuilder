@@ -3,7 +3,17 @@ import { supabase, DEMO_MODE } from '../lib/supabase'
 import { createEmptyCVContent } from '../lib/cvDefaults'
 import { DEFAULT_TEMPLATE } from '../constants/templates'
 import { getDemoCVs, setDemoCVs } from './authStore'
-import { generateFingerprint, compareFingerprints, isDifferentPerson } from '../lib/fingerprint'
+import { generateFingerprint, compareFingerprints } from '../lib/fingerprint'
+
+// Lazy import to avoid circular dependency
+let _subscriptionStore = null
+const getSubscriptionStore = () => {
+  if (!_subscriptionStore) {
+    const mod = require('./subscriptionStore')
+    _subscriptionStore = mod.useSubscriptionStore
+  }
+  return _subscriptionStore
+}
 
 export const useCVStore = create((set, get) => ({
   cvs: [],
@@ -57,6 +67,25 @@ export const useCVStore = create((set, get) => ({
       setDemoCVs(allCVs)
       set((state) => ({ cvs: [newCV, ...state.cvs] }))
       return newCV
+    }
+
+    // Server-side: count existing CVs + creation log
+    const { count: existingCVs } = await supabase
+      .from('cvs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    const { count: totalCreated } = await supabase
+      .from('cv_creation_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    // Check against subscription limit
+    const subStore = getSubscriptionStore()
+    const maxCVs = subStore ? subStore.getState().getMaxCVs() : 1
+
+    if ((existingCVs || 0) >= maxCVs) {
+      throw new Error('LIMIT_REACHED')
     }
 
     const { data, error } = await supabase
@@ -134,40 +163,32 @@ export const useCVStore = create((set, get) => ({
     if (!currentCV) return
     set({ saveStatus: 'saving', cheatWarning: null })
 
-    // --- Anti-cheat detection ---
+    // --- Anti-cheat v2: ONLY detect person swapping ---
+    // No more comparing CV with account owner (caused false positives)
     const currentFingerprint = generateFingerprint(currentCV.content)
     const originalFingerprint = currentCV.content_fingerprint || ''
     const comparison = compareFingerprints(originalFingerprint, currentFingerprint)
 
-    // If admin approved this CV, don't re-flag it (unless new violation)
+    // If admin approved, don't re-flag
     const adminApproved = currentCV.admin_approved || false
-    let isFlagged = adminApproved ? false : (currentCV.is_flagged || false)
-    let flagReason = adminApproved ? '' : (currentCV.flag_reason || '')
+
+    // Only flag if: person was swapped (A → B) AND not admin-approved
+    let isFlagged = currentCV.is_flagged || false
+    let flagReason = currentCV.flag_reason || ''
     let cheatWarning = null
 
-    if (comparison.isDifferent && !adminApproved) {
+    if (comparison.isDifferent && !adminApproved && comparison.confidence >= 1.0) {
       isFlagged = true
-      flagReason = comparison.confidence >= 1.0
-        ? 'CV_PERSON_CHANGED: Personal info significantly different from creation'
-        : 'CV_PERSON_CLEARED: Personal info was cleared after creation'
+      flagReason = 'CV_PERSON_SWAPPED: Name changed after creation — possible CV swapping'
       cheatWarning = {
-        message: flagReason.includes('CLEARED')
-          ? 'تم مسح المعلومات الشخصية بعد إنشاء السي في'
-          : 'تم تغيير المعلومات الشخصية بشكل كبير — قد يتم وضع علامة على هذا السي في',
+        message: 'تم تغيير الاسم بشكل كبير بعد إنشاء السي في',
         severity: 'high',
       }
-    }
-
-    // Check against profile owner (skip if admin approved)
-    if (profile && !adminApproved) {
-      const differentPerson = isDifferentPerson(currentCV.content, profile)
-      if (differentPerson) {
-        isFlagged = true
-        flagReason = 'CV_OWNER_MISMATCH: CV appears to belong to a different person than the account owner'
-        cheatWarning = {
-          message: 'السي في يبدو أنه لشخص مختلف عن صاحب الحساب',
-          severity: 'high',
-        }
+    } else if (!comparison.isDifferent) {
+      // No violation — clear any existing flag (unless admin set it)
+      if (isFlagged && flagReason?.includes('CV_PERSON_SWAPPED')) {
+        isFlagged = false
+        flagReason = ''
       }
     }
 
