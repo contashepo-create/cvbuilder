@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
@@ -14,8 +14,13 @@ export default function RegisterPage() {
   const { t, i18n } = useTranslation()
   const isAr = i18n.language === 'ar'
   const navigate = useNavigate()
-  const { signUp } = useAuthStore()
+  const { signUp, user } = useAuthStore()
   const [captchaToken, setCaptchaToken] = useState(null)
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) navigate('/dashboard')
+  }, [user, navigate])
 
   const [form, setForm] = useState({
     email: '',
