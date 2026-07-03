@@ -74,7 +74,7 @@ export default function SkillsStep({ data, onChange, personalInfo, cvLanguage = 
         <div key={item.id} className="flex items-end gap-3">
           <div className="flex-1">
             <label className="label">
-              {labels.skills} #{index + 1}
+              {isAr ? 'المهارة' : 'Skill'} #{index + 1}
             </label>
             <input
               type="text"
@@ -85,7 +85,7 @@ export default function SkillsStep({ data, onChange, personalInfo, cvLanguage = 
             />
           </div>
           <div className="w-40">
-            <label className="label">{labels.beginner ? (isAr ? 'المستوى' : 'Level') : (isAr ? 'المستوى' : 'Level')}</label>
+            <label className="label">{isAr ? 'المستوى' : 'Level'}</label>
             <select
               value={item.level}
               onChange={(e) => updateItem(item.id, 'level', e.target.value)}
